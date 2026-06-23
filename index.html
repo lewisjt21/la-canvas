@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1F3864">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LA Canvas">
+<title>LA Canvas</title>
+<link rel="manifest" href="manifest.json">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:    #1F3864;
+  --navydim: #162a4e;
+  --navylt:  #2d4f8a;
+  --yellow:  #FFC425;
+  --white:   #ffffff;
+  --off:     #f4f6fb;
+  --text:    #1a1a2e;
+  --green:   #1a6b3a;
+  --dot:     rgba(31,56,100,0.14);
+  --rule:    rgba(31,56,100,0.08);
+  --r: 8px;
+}
+
+html, body {
+  height: 100%; width: 100%;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  background: var(--navydim);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── LAYOUT ── */
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+/* ── TOPBAR ── */
+#topbar {
+  height: 44px; flex-shrink: 0;
+  background: var(--navy);
+  display: flex; align-items: center;
+  padding: 0 12px; gap: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  z-index: 100; position: relative;
+}
+
+.badge {
+  width: 28px; height: 28px;
+  background: var(--yellow); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: var(--navy); font-size: 10px;
+  flex-shrink: 0; letter-spacing: -0.5px;
+}
+
+#app-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--white); flex: 1;
+  white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tbtn {
+  height: 28px; min-width: 28px;
+  background: rgba(255,255,255,.09);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 6px; color: var(--white);
+  font-size: 10px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer; padding: 0 8px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; transition: background .13s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.tbtn:hover { background: rgba(255,255,255,.2); }
+.tbtn.active { background: var(--yellow); color: var(--navy); border-color: var(--yellow); }
+.tbtn svg { flex-shrink: 0; }
+
+#page-counter {
+  font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,.5);
+  white-space: nowrap; flex-shrink: 0;
+}
+
+/* progress bar */
+#prog-wrap { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: rgba(255,255,255,.1); }
+#prog-fill { height: 100%; background: var(--yellow); transition: width .25s ease; }
+
+/* ── CANVAS AREA ── */
+#canvas-wrap {
+  flex: 1; position: relative; overflow: hidden;
+  background-color: #f7f9fd;
+  background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+#main-canvas {
+  position: absolute; inset: 0;
+  touch-action: none;
+}
+
+/* ── PAGE STRIP (bottom) ── */
+#page-strip {
+  height: 52px; flex-shrink: 0;
+  background: var(--navydim);
+  border-top: 1px solid rgba(255,255,255,.1);
+  display: flex; align-items: center;
+  padding: 0 12px; gap: 8px;
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+#page-strip::-webkit-scrollbar { display: none; }
+
+.page-thumb {
+  flex-shrink: 0;
+  width: 60px; height: 36px;
+  border-radius: 5px;
+  border: 2px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.06);
+  cursor: pointer; position: relative;
+  transition: border-color .15s, transform .1s;
+  overflow: hidden;
+}
+.page-thumb:hover { border-color: rgba(255,255,255,.4); transform: scale(1.05); }
+.page-thumb.active { border-color: var(--yellow); }
+.page-thumb canvas { width: 100%; height: 100%; display: block; }
+.page-thumb .pg-num {
+  position: absolute; bottom: 2px; right: 4px;
+  font-size: 8px; font-weight: 700;
+  color: rgba(255,255,255,.6);
+}
+
+#add-page-btn {
+  flex-shrink: 0;
+  width: 36px; height: 36px;
+  border-radius: 5px;
+  border: 2px dashed rgba(255,255,255,.25);
+  background: transparent;
+  color: rgba(255,255,255,.5);
+  cursor: pointer; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+#add-page-btn:hover {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+
+/* ── FLOATING PEN UI ── */
+#pen-ui {
+  position: absolute;
+  bottom: 72px; left: 16px;
+  z-index: 90;
+  display: flex; align-items: flex-end; gap: 8px;
+  touch-action: none;
+}
+
+#pen-circle {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--navy);
+  border: 2.5px solid rgba(255,255,255,.25);
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: all .16s; position: relative;
+}
+#pen-circle:hover { background: var(--navylt); transform: scale(1.06); }
+#pen-circle.on { background: var(--yellow); border-color: white; box-shadow: 0 4px 20px rgba(255,196,37,.5); }
+#pen-circle::after {
+  content: ''; position: absolute;
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 1.5px solid white; bottom: -1px; right: -1px;
+  background: var(--cur-col, #1a1a2e); transition: background .14s;
+}
+
+#tool-bar {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--navydim);
+  border: 1.5px solid rgba(255,255,255,.18);
+  border-radius: 22px;
+  padding: 5px 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+  transition: opacity .16s, transform .16s;
+}
+#tool-bar.hidden {
+  opacity: 0; pointer-events: none; transform: translateX(-10px);
+}
+
+.pb-sep { width: 1px; height: 16px; background: rgba(255,255,255,.15); margin: 0 2px; }
+
+.csw {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform .12s; flex-shrink: 0;
+}
+.csw:hover { transform: scale(1.18); }
+.csw.active { border-color: white; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+
+.tsz {
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+  color: white; border-radius: 4px; width: 22px; height: 22px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .12s;
+}
+.tsz:hover, .tsz.active { background: var(--yellow); color: var(--navy); border-color: var(--yellow); }
+
+.tact {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.8); border-radius: 5px; padding: 0 7px;
+  height: 22px; font-size: 10px; font-weight: 600;
+  font-family: 'Inter', sans-serif; cursor: pointer;
+  display: flex; align-items: center; gap: 4px; transition: all .13s;
+  white-space: nowrap;
+}
+.tact:hover { background: rgba(255,255,255,.18); }
+.tact.erase-on { background: #c0392b; color: white; border-color: #c0392b; }
+.tact.danger:hover { background: #c0392b; color: white; border-color: #c0392b; }
+
+/* ── ZOOM INDICATOR ── */
+#zoom-pill {
+  position: absolute; bottom: 72px; right: 16px;
+  background: rgba(31,56,100,.8);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: 10px; font-weight: 600; color: rgba(255,255,255,.7);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  opacity: 0; transition: opacity .3s;
+}
+#zoom-pill.visible { opacity: 1; }
+
+/* ── PDF OVERLAY ── */
+#pdf-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(22,42,78,.88);
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 14px;
+  color: white; font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 600;
+}
+#pdf-overlay.active { display: flex; }
+#pdf-spinner {
+  width: 38px; height: 38px;
+  border: 3px solid rgba(255,255,255,.2);
+  border-top-color: var(--yellow);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PAGE DELETE CONFIRM ── */
+#del-confirm {
+  display: none; position: fixed; inset: 0; z-index: 190;
+  background: rgba(22,42,78,.7);
+  align-items: center; justify-content: center;
+}
+#del-confirm.active { display: flex; }
+#del-box {
+  background: var(--navydim); border: 1.5px solid rgba(255,255,255,.2);
+  border-radius: 12px; padding: 24px 28px;
+  display: flex; flex-direction: column; gap: 16px;
+  color: white; font-family: 'Inter', sans-serif;
+  max-width: 280px; text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+#del-box h3 { font-size: 15px; font-weight: 700; }
+#del-box p  { font-size: 12px; color: rgba(255,255,255,.6); }
+#del-box .del-btns { display: flex; gap: 8px; }
+#del-box .del-btns button {
+  flex: 1; height: 34px; border-radius: 6px; border: none;
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .13s;
+}
+#del-cancel { background: rgba(255,255,255,.1); color: white; }
+#del-cancel:hover { background: rgba(255,255,255,.2); }
+#del-ok { background: #c0392b; color: white; }
+#del-ok:hover { background: #a93226; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--navy); color: white;
+  font-size: 12px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  padding: 8px 16px; border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  opacity: 0; transition: all .25s;
+  pointer-events: none; z-index: 300;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="badge">LA</div>
+    <span id="app-title">Untitled Canvas</span>
+
+    <!-- Title edit on tap -->
+    <button class="tbtn" id="title-btn" onclick="editTitle()" title="Rename">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <div style="flex:1"></div>
+
+    <span id="page-counter">1 / 1</span>
+
+    <!-- Zoom reset -->
+    <button class="tbtn" id="zoom-reset-btn" onclick="resetView()" title="Reset view">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+    </button>
+
+    <!-- Undo -->
+    <button class="tbtn" id="undo-btn" onclick="undo()" title="Undo">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+      </svg>
+    </button>
+
+    <!-- Export PDF -->
+    <button class="tbtn" id="pdf-btn" onclick="exportPDF()" title="Export PDF">
+      &#8595; PDF
+    </button>
+  </div>
+
+  <!-- CANVAS WRAP -->
+  <div id="canvas-wrap">
+    <canvas id="main-canvas"></canvas>
+    <div id="zoom-pill">100%</div>
+  </div>
+
+  <!-- PAGE STRIP -->
+  <div id="page-strip">
+    <button id="add-page-btn" onclick="addPage()" title="New page">+</button>
+  </div>
+
+</div>
+
+<!-- PEN UI (outside #app so it can float freely) -->
+<div id="pen-ui">
+  <div id="pen-circle" onclick="toggleDraw()" title="Draw on/off">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor"/>
+      <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+    </svg>
+  </div>
+  <div id="tool-bar" class="hidden">
+    <!-- Colours -->
+    <div class="csw active" style="background:#1a1a2e" data-c="#1a1a2e" title="Black"></div>
+    <div class="csw" style="background:#c0392b" data-c="#c0392b" title="Red"></div>
+    <div class="csw" style="background:#1565c0" data-c="#1565c0" title="Blue"></div>
+    <div class="csw" style="background:#2e7d32" data-c="#2e7d32" title="Green"></div>
+    <div class="csw" style="background:#FFC425" data-c="#FFC425" title="Yellow"></div>
+    <div class="pb-sep"></div>
+    <!-- Sizes -->
+    <button class="tsz active" data-s="3" title="Fine">
+      <svg width="8" height="8"><circle cx="4" cy="4" r="2" fill="currentColor"/></svg>
+    </button>
+    <button class="tsz" data-s="6" title="Medium">
+      <svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg>
+    </button>
+    <button class="tsz" data-s="12" title="Thick">
+      <svg width="13" height="13"><circle cx="6.5" cy="6.5" r="5.5" fill="currentColor"/></svg>
+    </button>
+    <div class="pb-sep"></div>
+    <!-- Actions -->
+    <button class="tact" id="erase-btn" onclick="toggleErase()" title="Eraser">&#9003;</button>
+    <button class="tact danger" onclick="clearPage()" title="Clear page">&#10005;</button>
+  </div>
+</div>
+
+<!-- PDF OVERLAY -->
+<div id="pdf-overlay">
+  <div id="pdf-spinner"></div>
+  <span id="pdf-status">Preparing export…</span>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div id="del-confirm">
+  <div id="del-box">
+    <h3>Delete this page?</h3>
+    <p>All annotations on this page will be lost.</p>
+    <div class="del-btns">
+      <button id="del-cancel" onclick="cancelDelete()">Cancel</button>
+      <button id="del-ok" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   LA CANVAS — PROOF OF CONCEPT
+   Infinite canvas web app with:
+   - Virtual coordinate space (pan + zoom)
+   - Stroke storage in virtual coords
+   - Multi-page support
+   - PDF export (full stroke bounds, all pages)
+   - PWA installable
+═══════════════════════════════════════════════════════ */
+
+/* ── STATE ── */
+const canvas  = document.getElementById('main-canvas');
+const ctx     = canvas.getContext('2d');
+const wrap    = document.getElementById('canvas-wrap');
+
+// Virtual transform: screen = virtual * scale + offset
+let scale  = 1;
+let offsetX = 0;   // pan offset in screen px
+let offsetY = 0;
+
+// Pages: each page has its own stroke list
+// A stroke: { col, size, pts:[{x,y}], pressure:[p] }
+// pts are in VIRTUAL coordinates
+let pages    = [ [] ];   // array of stroke arrays
+let curPage  = 0;
+
+// Current stroke being drawn
+let drawing  = false;
+let curStroke = null;
+
+// Tool state
+let drawOn  = false;
+let eraseOn = false;
+let penCol  = '#1a1a2e';
+let penSz   = 3;
+
+// Undo stack per page
+let undoStacks = [ [] ];  // undoStacks[page] = array of stroke snapshots
+
+// Gesture state
+let lastTouchDist = null;
+let lastTouchMid  = null;
+let panning       = false;
+let panStart      = null;
+let panOffStart   = null;
+
+// Zoom pill timer
+let zoomTimer = null;
+
+// Dot paper
+const DOT_SPACING = 22;
+const DOT_COLOUR  = 'rgba(31,56,100,0.14)';
+const DOT_RADIUS  = 1.2;
+
+/* ── COORDINATE HELPERS ── */
+// Screen → Virtual
+function toVirt(sx, sy) {
+  return { x: (sx - offsetX) / scale, y: (sy - offsetY) / scale };
+}
+// Virtual → Screen
+function toScreen(vx, vy) {
+  return { x: vx * scale + offsetX, y: vy * scale + offsetY };
+}
+
+/* ── CANVAS RESIZE ── */
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const w   = wrap.offsetWidth;
+  const h   = wrap.offsetHeight;
+  canvas.width  = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+/* ── RENDER ── */
+function render() {
+  const dpr = window.devicePixelRatio || 1;
+  const W   = wrap.offsetWidth;
+  const H   = wrap.offsetHeight;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  // Dot paper background
+  drawDots(W, H);
+
+  // Draw all committed strokes
+  const strokes = pages[curPage];
+  for (const s of strokes) {
+    drawStroke(s);
+  }
+
+  // Draw current in-progress stroke
+  if (curStroke && curStroke.pts.length > 1) {
+    drawStroke(curStroke);
+  }
+}
+
+function drawDots(W, H) {
+  // Compute visible dot grid in screen space, accounting for transform
+  const startVirt = toVirt(0, 0);
+  const endVirt   = toVirt(W, H);
+
+  const gridX0 = Math.floor(startVirt.x / DOT_SPACING) * DOT_SPACING;
+  const gridY0 = Math.floor(startVirt.y / DOT_SPACING) * DOT_SPACING;
+
+  ctx.fillStyle = DOT_COLOUR;
+  for (let vx = gridX0; vx < endVirt.x + DOT_SPACING; vx += DOT_SPACING) {
+    for (let vy = gridY0; vy < endVirt.y + DOT_SPACING; vy += DOT_SPACING) {
+      const s = toScreen(vx, vy);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, DOT_RADIUS * scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawStroke(s) {
+  if (s.pts.length < 2) return;
+  ctx.save();
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  if (s.erase) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.lineWidth   = s.size * scale * 6;
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = s.col;
+    ctx.lineWidth   = s.size * scale;
+  }
+
+  ctx.beginPath();
+  const p0 = toScreen(s.pts[0].x, s.pts[0].y);
+  ctx.moveTo(p0.x, p0.y);
+  for (let i = 1; i < s.pts.length; i++) {
+    const p = toScreen(s.pts[i].x, s.pts[i].y);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ── PAN & ZOOM ── */
+function applyZoom(newScale, pivotX, pivotY) {
+  // Keep the pivot point fixed in virtual space
+  const minScale = 0.1, maxScale = 8;
+  newScale = Math.min(maxScale, Math.max(minScale, newScale));
+  // Adjust offset so point under cursor stays fixed
+  offsetX = pivotX - (pivotX - offsetX) * (newScale / scale);
+  offsetY = pivotY - (pivotY - offsetY) * (newScale / scale);
+  scale   = newScale;
+  showZoomPill();
+  render();
+}
+
+function resetView() {
+  scale   = 1;
+  offsetX = 0;
+  offsetY = 0;
+  showZoomPill();
+  render();
+}
+
+function showZoomPill() {
+  const pill = document.getElementById('zoom-pill');
+  pill.textContent = Math.round(scale * 100) + '%';
+  pill.classList.add('visible');
+  clearTimeout(zoomTimer);
+  zoomTimer = setTimeout(() => pill.classList.remove('visible'), 1500);
+}
+
+/* ── POINTER EVENTS ── */
+let activePointers = {};
+
+canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+canvas.addEventListener('pointerup',   onPointerUp);
+canvas.addEventListener('pointercancel', onPointerUp);
+
+function onPointerDown(e) {
+  e.preventDefault();
+  activePointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  canvas.setPointerCapture(e.pointerId);
+
+  const pointerCount = Object.keys(activePointers).length;
+
+  if (pointerCount === 1) {
+    if (drawOn) {
+      // Start stroke
+      drawing = true;
+      const v = toVirt(e.clientX - wrap.getBoundingClientRect().left,
+                       e.clientY - wrap.getBoundingClientRect().top);
+      curStroke = { col: penCol, size: penSz, erase: eraseOn, pts: [v] };
+    } else {
+      // Start pan
+      panning     = true;
+      panStart    = { x: e.clientX, y: e.clientY };
+      panOffStart = { x: offsetX, y: offsetY };
+    }
+  } else if (pointerCount === 2) {
+    // Cancel any ongoing stroke or pan, switch to pinch-zoom
+    drawing    = false;
+    panning    = false;
+    curStroke  = null;
+    const pts  = Object.values(activePointers);
+    lastTouchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+    lastTouchMid  = {
+      x: (pts[0].x + pts[1].x) / 2 - wrap.getBoundingClientRect().left,
+      y: (pts[0].y + pts[1].y) / 2 - wrap.getBoundingClientRect().top
+    };
+    render();
+  }
+}
+
+function onPointerMove(e) {
+  e.preventDefault();
+  if (!activePointers[e.pointerId]) return;
+  activePointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+
+  const pointerCount = Object.keys(activePointers).length;
+  const rect = wrap.getBoundingClientRect();
+
+  if (pointerCount === 2) {
+    // Pinch zoom
+    const pts = Object.values(activePointers);
+    const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+    const mid  = {
+      x: (pts[0].x + pts[1].x) / 2 - rect.left,
+      y: (pts[0].y + pts[1].y) / 2 - rect.top
+    };
+
+    if (lastTouchDist !== null) {
+      // Zoom
+      const zoomFactor = dist / lastTouchDist;
+      applyZoom(scale * zoomFactor, mid.x, mid.y);
+      // Pan by mid-point movement
+      offsetX += mid.x - lastTouchMid.x;
+      offsetY += mid.y - lastTouchMid.y;
+      render();
+    }
+    lastTouchDist = dist;
+    lastTouchMid  = mid;
+
+  } else if (pointerCount === 1) {
+    if (drawing && curStroke) {
+      const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
+      curStroke.pts.push(v);
+      render();
+    } else if (panning && panStart) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      offsetX  = panOffStart.x + dx;
+      offsetY  = panOffStart.y + dy;
+      render();
+    }
+  }
+}
+
+function onPointerUp(e) {
+  delete activePointers[e.pointerId];
+  const pointerCount = Object.keys(activePointers).length;
+
+  if (pointerCount < 2) {
+    lastTouchDist = null;
+    lastTouchMid  = null;
+  }
+
+  if (drawing && curStroke) {
+    if (curStroke.pts.length > 0) {
+      // Save undo snapshot before committing
+      undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
+      if (undoStacks[curPage].length > 50) undoStacks[curPage].shift();
+      pages[curPage].push(curStroke);
+      updateThumb(curPage);
+    }
+    curStroke = null;
+    drawing   = false;
+    render();
+  }
+
+  if (pointerCount === 0) {
+    panning  = false;
+    panStart = null;
+  }
+}
+
+// Mouse wheel zoom
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect  = wrap.getBoundingClientRect();
+  const pivot = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  applyZoom(scale * factor, pivot.x, pivot.y);
+}, { passive: false });
+
+/* ── TOOL CONTROLS ── */
+function toggleDraw() {
+  drawOn = !drawOn;
+  const c = document.getElementById('pen-circle');
+  c.classList.toggle('on', drawOn);
+  document.getElementById('tool-bar').classList.toggle('hidden', !drawOn);
+  if (!drawOn) { eraseOn = false; syncErase(); }
+  canvas.style.cursor = drawOn ? (eraseOn ? 'cell' : 'crosshair') : 'grab';
+}
+
+function toggleErase() {
+  if (!drawOn) toggleDraw();
+  eraseOn = !eraseOn;
+  syncErase();
+  canvas.style.cursor = eraseOn ? 'cell' : 'crosshair';
+}
+
+function syncErase() {
+  document.getElementById('erase-btn').classList.toggle('erase-on', eraseOn);
+}
+
+function setCol(el) {
+  document.querySelectorAll('.csw').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  penCol  = el.dataset.c;
+  eraseOn = false; syncErase();
+  document.getElementById('pen-circle').style.setProperty('--cur-col', penCol);
+  canvas.style.cursor = 'crosshair';
+}
+
+function setSz(el) {
+  document.querySelectorAll('.tsz').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  penSz = parseInt(el.dataset.s);
+}
+
+// Wire up colour and size buttons
+document.querySelectorAll('.csw').forEach(el => el.addEventListener('click', () => setCol(el)));
+document.querySelectorAll('.tsz').forEach(el => el.addEventListener('click', () => setSz(el)));
+
+document.getElementById('pen-circle').style.setProperty('--cur-col', penCol);
+canvas.style.cursor = 'grab';
+
+/* ── UNDO ── */
+function undo() {
+  if (!undoStacks[curPage] || undoStacks[curPage].length === 0) {
+    showToast('Nothing to undo');
+    return;
+  }
+  pages[curPage] = undoStacks[curPage].pop();
+  render();
+  updateThumb(curPage);
+}
+
+/* ── CLEAR PAGE ── */
+function clearPage() {
+  if (pages[curPage].length === 0) { showToast('Page already empty'); return; }
+  undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
+  pages[curPage] = [];
+  render();
+  updateThumb(curPage);
+}
+
+/* ── PAGE MANAGEMENT ── */
+function addPage() {
+  pages.push([]);
+  undoStacks.push([]);
+  const idx = pages.length - 1;
+  curPage = idx;
+  buildPageStrip();
+  resetView();
+  showToast('Page ' + (idx + 1) + ' added');
+}
+
+function switchPage(idx) {
+  if (idx === curPage) return;
+  curPage = idx;
+  buildPageStrip();
+  resetView();
+  updatePageCounter();
+}
+
+function deletePage(idx) {
+  if (pages.length === 1) { showToast('Cannot delete the only page'); return; }
+  deleteTarget = idx;
+  document.getElementById('del-confirm').classList.add('active');
+}
+
+let deleteTarget = null;
+function cancelDelete() { document.getElementById('del-confirm').classList.remove('active'); deleteTarget = null; }
+function confirmDelete() {
+  if (deleteTarget === null) return;
+  pages.splice(deleteTarget, 1);
+  undoStacks.splice(deleteTarget, 1);
+  if (curPage >= pages.length) curPage = pages.length - 1;
+  document.getElementById('del-confirm').classList.remove('active');
+  deleteTarget = null;
+  buildPageStrip();
+  render();
+  showToast('Page deleted');
+}
+
+function buildPageStrip() {
+  const strip = document.getElementById('page-strip');
+  // Remove all thumbs
+  strip.querySelectorAll('.page-thumb').forEach(el => el.remove());
+  // Rebuild
+  const addBtn = document.getElementById('add-page-btn');
+  pages.forEach((_, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'page-thumb' + (i === curPage ? ' active' : '');
+    thumb.dataset.idx = i;
+
+    const tc = document.createElement('canvas');
+    tc.width  = 120; tc.height = 72;
+    thumb.appendChild(tc);
+
+    const num = document.createElement('span');
+    num.className = 'pg-num';
+    num.textContent = i + 1;
+    thumb.appendChild(num);
+
+    thumb.addEventListener('click', () => switchPage(i));
+    thumb.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      deletePage(i);
+    });
+    // Long press for delete on touch
+    let longPressTimer;
+    thumb.addEventListener('touchstart', () => {
+      longPressTimer = setTimeout(() => deletePage(i), 600);
+    }, { passive: true });
+    thumb.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    thumb.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+
+    strip.insertBefore(thumb, addBtn);
+    renderThumb(i, tc);
+  });
+  updatePageCounter();
+}
+
+function updateThumb(idx) {
+  const strip = document.getElementById('page-strip');
+  const thumbs = strip.querySelectorAll('.page-thumb');
+  if (thumbs[idx]) {
+    const tc = thumbs[idx].querySelector('canvas');
+    if (tc) renderThumb(idx, tc);
+  }
+}
+
+function renderThumb(idx, tc) {
+  const tctx = tc.getContext('2d');
+  const W = tc.width, H = tc.height;
+  tctx.clearRect(0, 0, W, H);
+
+  // Dot paper
+  tctx.fillStyle = '#f7f9fd';
+  tctx.fillRect(0, 0, W, H);
+  tctx.fillStyle = 'rgba(31,56,100,0.12)';
+  const spacing = 8;
+  for (let x = 0; x < W; x += spacing) {
+    for (let y = 0; y < H; y += spacing) {
+      tctx.beginPath();
+      tctx.arc(x, y, 0.7, 0, Math.PI * 2);
+      tctx.fill();
+    }
+  }
+
+  const strokes = pages[idx];
+  if (!strokes || strokes.length === 0) return;
+
+  // Compute bounds of all strokes
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of strokes) {
+    for (const p of s.pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+  }
+  if (minX === Infinity) return;
+
+  const pad    = 10;
+  const bW     = maxX - minX || 1;
+  const bH     = maxY - minY || 1;
+  const tScale = Math.min((W - pad * 2) / bW, (H - pad * 2) / bH) * 0.9;
+  const tOffX  = pad + ((W - pad * 2) - bW * tScale) / 2 - minX * tScale;
+  const tOffY  = pad + ((H - pad * 2) - bH * tScale) / 2 - minY * tScale;
+
+  for (const s of strokes) {
+    if (s.erase || s.pts.length < 2) continue;
+    tctx.save();
+    tctx.lineCap  = 'round';
+    tctx.lineJoin = 'round';
+    tctx.strokeStyle = s.col;
+    tctx.lineWidth   = Math.max(1, s.size * tScale);
+    tctx.beginPath();
+    tctx.moveTo(s.pts[0].x * tScale + tOffX, s.pts[0].y * tScale + tOffY);
+    for (let i = 1; i < s.pts.length; i++) {
+      tctx.lineTo(s.pts[i].x * tScale + tOffX, s.pts[i].y * tScale + tOffY);
+    }
+    tctx.stroke();
+    tctx.restore();
+  }
+}
+
+function updatePageCounter() {
+  document.getElementById('page-counter').textContent = (curPage + 1) + ' / ' + pages.length;
+  // Update prog fill
+  document.getElementById('prog-fill').style.width = ((curPage + 1) / pages.length * 100) + '%';
+}
+
+/* ── TITLE EDIT ── */
+function editTitle() {
+  const current = document.getElementById('app-title').textContent;
+  const name = prompt('Canvas name:', current);
+  if (name && name.trim()) {
+    document.getElementById('app-title').textContent = name.trim();
+    document.title = name.trim() + ' — LA Canvas';
+  }
+}
+
+/* ── PDF EXPORT ── */
+async function exportPDF() {
+  const overlay  = document.getElementById('pdf-overlay');
+  const statusEl = document.getElementById('pdf-status');
+  overlay.classList.add('active');
+  statusEl.textContent = 'Loading libraries…';
+
+  if (!window.jspdf)      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+  const { jsPDF } = window.jspdf;
+
+  // A4 landscape in mm
+  const pW = 297, pH = 210;
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  for (let pi = 0; pi < pages.length; pi++) {
+    statusEl.textContent = `Exporting page ${pi + 1} of ${pages.length}…`;
+
+    const strokes = pages[pi];
+    // Compute stroke bounding box (virtual coords)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of strokes) {
+      for (const p of s.pts) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+    }
+
+    // Off-screen canvas at 2× for quality
+    const dpr = 2;
+    const oc  = document.createElement('canvas');
+    const pad = 40; // virtual units padding
+
+    let renderScale, renderOffX, renderOffY, ocW, ocH;
+
+    if (minX === Infinity) {
+      // Blank page — render small placeholder
+      ocW = Math.round(pW * dpr * 3);
+      ocH = Math.round(pH * dpr * 3);
+      oc.width  = ocW;
+      oc.height = ocH;
+      renderScale = 3;
+      renderOffX  = 0;
+      renderOffY  = 0;
+    } else {
+      const bW = (maxX - minX) + pad * 2;
+      const bH = (maxY - minY) + pad * 2;
+      // Scale to fit A4
+      const fitScale = Math.min(pW * dpr / bW, pH * dpr / bH);
+      renderScale = fitScale;
+      ocW = Math.ceil(bW * renderScale);
+      ocH = Math.ceil(bH * renderScale);
+      oc.width  = ocW;
+      oc.height = ocH;
+      renderOffX = (-minX + pad) * renderScale;
+      renderOffY = (-minY + pad) * renderScale;
+    }
+
+    const oc_ctx = oc.getContext('2d');
+
+    // Dot paper background
+    oc_ctx.fillStyle = '#f7f9fd';
+    oc_ctx.fillRect(0, 0, ocW, ocH);
+    oc_ctx.fillStyle = 'rgba(31,56,100,0.14)';
+    const ds = DOT_SPACING * renderScale;
+    const ox_ = renderOffX % ds;
+    const oy_ = renderOffY % ds;
+    for (let x = ox_; x < ocW + ds; x += ds) {
+      for (let y = oy_; y < ocH + ds; y += ds) {
+        oc_ctx.beginPath();
+        oc_ctx.arc(x, y, DOT_RADIUS * renderScale, 0, Math.PI * 2);
+        oc_ctx.fill();
+      }
+    }
+
+    // Render strokes
+    for (const s of strokes) {
+      if (s.pts.length < 2) continue;
+      oc_ctx.save();
+      oc_ctx.lineCap  = 'round';
+      oc_ctx.lineJoin = 'round';
+      if (s.erase) {
+        oc_ctx.globalCompositeOperation = 'destination-out';
+        oc_ctx.strokeStyle = 'rgba(0,0,0,1)';
+        oc_ctx.lineWidth   = s.size * renderScale * 6;
+      } else {
+        oc_ctx.globalCompositeOperation = 'source-over';
+        oc_ctx.strokeStyle = s.col;
+        oc_ctx.lineWidth   = s.size * renderScale;
+      }
+      oc_ctx.beginPath();
+      oc_ctx.moveTo(s.pts[0].x * renderScale + renderOffX, s.pts[0].y * renderScale + renderOffY);
+      for (let i = 1; i < s.pts.length; i++) {
+        oc_ctx.lineTo(s.pts[i].x * renderScale + renderOffX, s.pts[i].y * renderScale + renderOffY);
+      }
+      oc_ctx.stroke();
+      oc_ctx.restore();
+    }
+
+    // Add to PDF
+    const imgData = oc.toDataURL('image/png');
+    if (pi > 0) pdf.addPage('a4', 'landscape');
+
+    // Fit image into A4 maintaining aspect ratio
+    const imgW = ocW, imgH = ocH;
+    const ratio = imgW / imgH;
+    let fw = pW, fh = pH;
+    if (imgW / imgH > pW / pH) {
+      fh = pW / ratio;
+    } else {
+      fw = pH * ratio;
+    }
+    const fx = (pW - fw) / 2;
+    const fy = (pH - fh) / 2;
+    pdf.addImage(imgData, 'PNG', fx, fy, fw, fh);
+  }
+
+  const title = document.getElementById('app-title').textContent.replace(/\s+/g, '_') || 'canvas';
+  pdf.save(title + '_annotated.pdf');
+  overlay.classList.remove('active');
+  showToast('PDF exported');
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+/* ── TOAST ── */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ── PWA INSTALL PROMPT ── */
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  // Show install option in a small toast
+  showToast('Tip: Add to home screen to install');
+});
+
+/* ── INIT ── */
+resizeCanvas();
+buildPageStrip();
+showToast('Pan with one finger · Pinch to zoom · Tap ✏ to draw');
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
