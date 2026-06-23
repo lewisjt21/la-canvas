@@ -203,6 +203,7 @@ html, body {
 }
 #undo-fab:hover, #redo-fab:hover { background: var(--navy); }
 #undo-fab:disabled, #redo-fab:disabled { opacity: .3; cursor: default; }
+.pact.snap-on { background: var(--yellow); color: var(--navy); border-color: var(--yellow); }
 
 #pen-bar {
   display: flex; align-items: center; gap: 6px;
@@ -388,6 +389,12 @@ html, body {
     <div class="pb-sep"></div>
     <button class="pact" id="erase-btn" title="Eraser">&#9003;</button>
     <button class="pact danger" id="clear-btn" title="Clear page">&#10005;</button>
+    <div class="pb-sep"></div>
+    <button class="pact" id="shape-btn" onclick="toggleSnap()" title="Shape recognition">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 22 20 2 20"/>
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -713,11 +720,10 @@ function onPointerUp(e) {
       if (undoStacks[curPage].length > 60) undoStacks[curPage].shift();
       redoStacks[curPage] = []; // new stroke clears redo
       pages[curPage].push(curStroke);
-      // Try shape recognition
+      // Try shape recognition (only when snapOn)
       const snap = trySnapShape(curStroke);
       if (snap) {
-        const snappedStroke = makeShapeStroke(snap, curStroke);
-        offerSnap(curStroke, snappedStroke);
+        applySnap(curStroke, makeShapeStroke(snap, curStroke));
       } else {
         updateThumb(curPage);
         syncUndoRedo();
@@ -821,59 +827,69 @@ document.getElementById('pen-pill').style.setProperty('--cur-col', penCol);
 
 
 /* ═══════════════════════════════════════════════════════
-   AUTO SHAPE RECOGNITION
-   On stroke end, check if it matches a geometric primitive.
-   Threshold tuning: SHAPE_THRESH controls how "rough" a
-   stroke must be to trigger snap (0=perfect, 1=very rough).
+   AUTO SHAPE RECOGNITION — with toggle
+   Priority order: LINE → corners (RECT/TRIANGLE) → CIRCLE
+   Circle is last and requires NO corners to be detected.
 ═══════════════════════════════════════════════════════ */
-const SHAPE_THRESH = 0.18; // tolerance for shape detection
+let snapOn = false; // off by default — toggle with shape button
+
+function toggleSnap() {
+  snapOn = !snapOn;
+  document.getElementById('shape-btn').classList.toggle('snap-on', snapOn);
+  showToast(snapOn ? 'Shape recognition on' : 'Shape recognition off');
+}
 
 function trySnapShape(stroke) {
+  if (!snapOn) return null;
   const pts = stroke.pts;
-  if (pts.length < 4 || stroke.erase) return null;
+  if (pts.length < 6 || stroke.erase) return null;
 
-  // Bounding box
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for (const p of pts) {
     if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
     if(p.x>maxX)maxX=p.x; if(p.y>maxY)maxY=p.y;
   }
   const bW=maxX-minX, bH=maxY-minY;
+  if (bW < 10 && bH < 10) return null; // too small — ignore
   const strokeLen = pathLength(pts);
 
-  // ── LINE: very straight, short bounding box perpendicular ──
+  // ── 1. LINE: end-to-end distance is almost as long as the stroke ──
   const endDist = Math.hypot(pts[pts.length-1].x - pts[0].x, pts[pts.length-1].y - pts[0].y);
   const lineRatio = endDist / strokeLen;
-  if (lineRatio > 0.88 && pts.length >= 4) {
+  if (lineRatio > 0.90) {
     return { type:'line', x1:pts[0].x, y1:pts[0].y, x2:pts[pts.length-1].x, y2:pts[pts.length-1].y };
   }
 
-  // ── CLOSED shape: start and end are close ──
+  // ── CLOSED shape check ──
   const closeDist = Math.hypot(pts[pts.length-1].x - pts[0].x, pts[pts.length-1].y - pts[0].y);
-  const isClosed = closeDist < strokeLen * 0.25;
+  const isClosed = closeDist < strokeLen * 0.3;
+  if (!isClosed || pts.length < 10) return null;
 
-  if (isClosed && pts.length >= 8) {
-    const diagonal = Math.hypot(bW, bH);
+  // ── 2. Find corners FIRST — corners rule out circle ──
+  const corners = findCorners(pts, bW, bH);
 
-    // ── CIRCLE: perimeter ≈ 2πr, and shape is roughly circular ──
-    const circlePerim = Math.PI * Math.hypot(bW, bH) / Math.SQRT2;
-    const circleRatio = Math.abs(strokeLen - circlePerim) / circlePerim;
+  // ── RECTANGLE: exactly 4 corners ──
+  if (corners.length === 4) {
+    return { type:'rect', x:minX, y:minY, w:bW, h:bH };
+  }
+
+  // ── TRIANGLE: exactly 3 corners ──
+  if (corners.length === 3) {
+    return { type:'triangle', pts: corners };
+  }
+
+  // ── 3. CIRCLE: only if no corners detected AND shape is round ──
+  // Use two independent checks: aspect ratio and perimeter match
+  if (corners.length === 0) {
     const aspectRatio = bW > 0 && bH > 0 ? Math.min(bW,bH)/Math.max(bW,bH) : 0;
-    if (circleRatio < SHAPE_THRESH * 1.5 && aspectRatio > 0.6) {
+    // Perimeter of ellipse approximation (Ramanujan)
+    const a = bW/2, b = bH/2;
+    const ellipsePerim = Math.PI * (3*(a+b) - Math.sqrt((3*a+b)*(a+3*b)));
+    const perimRatio = Math.abs(strokeLen - ellipsePerim) / ellipsePerim;
+    if (aspectRatio > 0.65 && perimRatio < 0.22) {
       const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
-      const r=Math.hypot(bW,bH)/2 * 0.92;
+      const r = Math.hypot(bW,bH)/2 * 0.88;
       return { type:'circle', cx, cy, r };
-    }
-
-    // ── RECTANGLE: 4 corners, sides roughly horizontal/vertical ──
-    const corners = findCorners(pts);
-    if (corners.length === 4) {
-      return { type:'rect', x:minX, y:minY, w:bW, h:bH };
-    }
-
-    // ── TRIANGLE: 3 corners ──
-    if (corners.length === 3) {
-      return { type:'triangle', pts: corners };
     }
   }
 
@@ -886,10 +902,14 @@ function pathLength(pts) {
   return len;
 }
 
-function findCorners(pts) {
-  // Find significant direction changes (corners)
+function findCorners(pts, bW, bH) {
+  // Adaptive window: larger for bigger shapes so we don't pick up noise
   const n = pts.length;
-  const windowSize = Math.max(3, Math.floor(n * 0.06));
+  const minDim = Math.min(bW, bH);
+  // Window in terms of points — scales with path density
+  const windowSize = Math.max(4, Math.floor(n * 0.07));
+  // Minimum distance between corners (relative to shape size)
+  const minCornerDist = Math.max(15, minDim * 0.15);
   const corners = [];
 
   for (let i = windowSize; i < n - windowSize; i++) {
@@ -897,11 +917,14 @@ function findCorners(pts) {
     const after  = Math.atan2(pts[i+windowSize].y - pts[i].y, pts[i+windowSize].x - pts[i].x);
     let diff = Math.abs(after - before);
     if (diff > Math.PI) diff = 2*Math.PI - diff;
-    if (diff > Math.PI * 0.35) {
-      // Check this isn't too close to an existing corner
-      if (corners.length === 0 || Math.hypot(pts[i].x-corners[corners.length-1].x, pts[i].y-corners[corners.length-1].y) > 20) {
-        corners.push(pts[i]);
-        i += windowSize; // skip ahead
+
+    // Corner threshold: must be a sharp change (> 55°)
+    if (diff > Math.PI * 0.30) {
+      const last = corners[corners.length-1];
+      const distFromLast = last ? Math.hypot(pts[i].x-last.x, pts[i].y-last.y) : Infinity;
+      if (distFromLast > minCornerDist) {
+        corners.push({ x:pts[i].x, y:pts[i].y });
+        i += windowSize;
       }
     }
   }
@@ -909,14 +932,12 @@ function findCorners(pts) {
 }
 
 function makeShapeStroke(shape, original) {
-  // Convert detected shape into a stroke with clean geometric points
   const base = { col: original.col, size: original.size, erase: false };
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for (const p of original.pts) {
     if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
     if(p.x>maxX)maxX=p.x; if(p.y>maxY)maxY=p.y;
   }
-
   if (shape.type === 'line') {
     base.pts = [{x:shape.x1,y:shape.y1},{x:shape.x2,y:shape.y2}];
   } else if (shape.type === 'rect') {
@@ -924,9 +945,9 @@ function makeShapeStroke(shape, original) {
     base.pts = [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h},{x,y}];
   } else if (shape.type === 'circle') {
     const {cx,cy,r} = shape;
-    const pts=[];
-    for (let a=0;a<=Math.PI*2+0.01;a+=Math.PI/36) pts.push({x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r});
-    base.pts = pts;
+    const cpts=[];
+    for (let a=0;a<=Math.PI*2+0.01;a+=Math.PI/36) cpts.push({x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r});
+    base.pts = cpts;
   } else if (shape.type === 'triangle') {
     const tp = shape.pts;
     base.pts = [tp[0],tp[1],tp[2],tp[0]];
@@ -934,44 +955,13 @@ function makeShapeStroke(shape, original) {
   return base;
 }
 
-let pendingSnap = null; // { original, snapped } waiting for user decision
-
-function offerSnap(original, snapped) {
-  pendingSnap = { original, snapped };
-  // Replace stroke with snapped version immediately (reversible)
+function applySnap(original, snapped) {
+  // Directly replace the last stroke with the snapped version
   const idx = pages[curPage].length - 1;
   pages[curPage][idx] = snapped;
   render();
-
-  // Show toast with accept/reject
-  const t = document.getElementById('toast');
-  t.innerHTML = 'Shape detected &nbsp;<button onclick="keepShape()" style="background:var(--yellow);color:var(--navy);border:none;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">Keep</button>&nbsp;<button onclick="keepFreehand()" style="background:rgba(255,255,255,.2);color:white;border:none;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">Freehand</button>';
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  // Auto-accept after 3s
-  toastTimer = setTimeout(() => {
-    keepShape();
-  }, 3000);
-}
-
-function keepShape() {
-  pendingSnap = null;
-  const t = document.getElementById('toast');
-  t.classList.remove('show');
-  t.innerHTML='';
   updateThumb(curPage);
-}
-
-function keepFreehand() {
-  if (!pendingSnap) return;
-  const idx = pages[curPage].length - 1;
-  pages[curPage][idx] = pendingSnap.original;
-  pendingSnap = null;
-  render();
-  const t = document.getElementById('toast');
-  t.classList.remove('show');
-  t.innerHTML='';
-  updateThumb(curPage);
+  syncUndoRedo();
 }
 
 /* ── UNDO / REDO ── */
