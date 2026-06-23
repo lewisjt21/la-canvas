@@ -626,7 +626,7 @@ function onPointerDown(e) {
   const pointerCount = Object.keys(activePointers).length;
 
   if (isPenOrMouse(e) && pointerCount === 1) {
-    // Pen / mouse always draws
+    // Pen / mouse always draws — reset snap state for fresh stroke
     drawing     = true;
     holdSnapped = false;
     resetHoldTimer();
@@ -688,17 +688,19 @@ function onPointerMove(e) {
 
   } else if (pointerCount === 1) {
     if (drawing && curStroke) {
+      // If already snapped, ignore further pen movement — don't add points
+      if (holdSnapped) return;
+
       const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
       const lastPt = curStroke.pts[curStroke.pts.length - 1];
       const moved = Math.hypot(v.x - lastPt.x, v.y - lastPt.y);
       curStroke.pts.push(v);
       render();
-      // Only reset the hold timer for real movement (> 4 virtual units)
-      // Micro-movements from digitiser noise are ignored so the timer survives
+
+      // Reset hold timer only on real movement (> 4 virtual units = ignore digitiser noise)
       if (moved > 4) {
         startHoldTimer();
       } else if (!holdTimer) {
-        // Not moving meaningfully and no timer running — start one
         startHoldTimer();
       }
     } else if (panning && panStart) {
@@ -727,12 +729,19 @@ function startHoldTimer() {
   resetHoldTimer();
   holdTimer = setTimeout(() => {
     holdTimer = null;
-    if (!drawing || !curStroke || curStroke.pts.length < 6) return;
+    if (!drawing || !curStroke) return;
+
+    // Guard 1: must have drawn enough to form a shape
+    if (curStroke.pts.length < 6) return;
+
     const snap = trySnapShape(curStroke);
     if (snap) {
       holdSnapped = true;
+      // FIX 2: freeze drawing so further pen movement doesn't add points
+      // Store the snapped stroke separately; drawing flag stays true so
+      // pointerup still commits cleanly, but pointermove will skip adding pts
       curStroke = makeShapeStroke(snap, curStroke);
-      render(); // show snapped shape while pen still down
+      render();
     }
   }, 700);
 }
