@@ -1,4 +1,4 @@
-const CACHE = 'la-canvas-v4';
+const CACHE = 'la-canvas-v5';
 const ASSETS = [
   './',
   './index.html',
