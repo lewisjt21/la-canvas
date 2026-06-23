@@ -629,9 +629,11 @@ function onPointerDown(e) {
     // Pen / mouse always draws
     drawing     = true;
     holdSnapped = false;
+    resetHoldTimer();
     const rect  = wrap.getBoundingClientRect();
     const v     = toVirt(e.clientX - rect.left, e.clientY - rect.top);
     curStroke   = { col: penCol, size: penSz, erase: eraseOn, pts: [v] };
+    startHoldTimer(); // timer starts immediately; real movement will keep resetting it
   } else if (!isPenOrMouse(e)) {
     // Touch input
     if (pointerCount === 1) {
@@ -687,10 +689,18 @@ function onPointerMove(e) {
   } else if (pointerCount === 1) {
     if (drawing && curStroke) {
       const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
+      const lastPt = curStroke.pts[curStroke.pts.length - 1];
+      const moved = Math.hypot(v.x - lastPt.x, v.y - lastPt.y);
       curStroke.pts.push(v);
       render();
-      // Any movement resets the hold timer — stillness restarts the 700ms countdown
-      startHoldTimer();
+      // Only reset the hold timer for real movement (> 4 virtual units)
+      // Micro-movements from digitiser noise are ignored so the timer survives
+      if (moved > 4) {
+        startHoldTimer();
+      } else if (!holdTimer) {
+        // Not moving meaningfully and no timer running — start one
+        startHoldTimer();
+      }
     } else if (panning && panStart) {
       const dx = e.clientX - panStart.x;
       const dy = e.clientY - panStart.y;
@@ -717,14 +727,12 @@ function startHoldTimer() {
   resetHoldTimer();
   holdTimer = setTimeout(() => {
     holdTimer = null;
-    // Pen has been still for 700ms while still drawing — snap
-    if (!drawing || !curStroke) return;
+    if (!drawing || !curStroke || curStroke.pts.length < 6) return;
     const snap = trySnapShape(curStroke);
     if (snap) {
       holdSnapped = true;
-      // Replace the in-progress stroke visually with snapped version
       curStroke = makeShapeStroke(snap, curStroke);
-      render();
+      render(); // show snapped shape while pen still down
     }
   }, 700);
 }
