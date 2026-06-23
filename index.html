@@ -203,7 +203,6 @@ html, body {
 }
 #undo-fab:hover, #redo-fab:hover { background: var(--navy); }
 #undo-fab:disabled, #redo-fab:disabled { opacity: .3; cursor: default; }
-.pact.snap-on { background: var(--yellow); color: var(--navy); border-color: var(--yellow); }
 
 #pen-bar {
   display: flex; align-items: center; gap: 6px;
@@ -389,12 +388,7 @@ html, body {
     <div class="pb-sep"></div>
     <button class="pact" id="erase-btn" title="Eraser">&#9003;</button>
     <button class="pact danger" id="clear-btn" title="Clear page">&#10005;</button>
-    <div class="pb-sep"></div>
-    <button class="pact" id="shape-btn" onclick="toggleSnap()" title="Shape recognition">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 22 20 2 20"/>
-      </svg>
-    </button>
+
   </div>
 </div>
 
@@ -633,10 +627,11 @@ function onPointerDown(e) {
 
   if (isPenOrMouse(e) && pointerCount === 1) {
     // Pen / mouse always draws
-    drawing = true;
-    const rect = wrap.getBoundingClientRect();
-    const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
-    curStroke = { col: penCol, size: penSz, erase: eraseOn, pts: [v] };
+    drawing     = true;
+    holdSnapped = false;
+    const rect  = wrap.getBoundingClientRect();
+    const v     = toVirt(e.clientX - rect.left, e.clientY - rect.top);
+    curStroke   = { col: penCol, size: penSz, erase: eraseOn, pts: [v] };
   } else if (!isPenOrMouse(e)) {
     // Touch input
     if (pointerCount === 1) {
@@ -694,6 +689,8 @@ function onPointerMove(e) {
       const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
       curStroke.pts.push(v);
       render();
+      // Any movement resets the hold timer — stillness restarts the 700ms countdown
+      startHoldTimer();
     } else if (panning && panStart) {
       const dx = e.clientX - panStart.x;
       const dy = e.clientY - panStart.y;
@@ -702,6 +699,44 @@ function onPointerMove(e) {
       render();
     }
   }
+}
+
+/* ── HOLD-TO-SNAP ──────────────────────────────────────
+   Pen held still at end of stroke for 700ms → shape snap.
+   Pen lifts normally → commit as freehand immediately.
+   Moving resets the stillness timer.
+─────────────────────────────────────────────────────── */
+let holdTimer = null;   // fires if pen stays still 700ms
+let holdSnapped = false; // did we already snap this stroke?
+
+function resetHoldTimer() {
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+}
+
+function startHoldTimer() {
+  resetHoldTimer();
+  holdTimer = setTimeout(() => {
+    holdTimer = null;
+    // Pen has been still for 700ms while still drawing — snap
+    if (!drawing || !curStroke) return;
+    const snap = trySnapShape(curStroke);
+    if (snap) {
+      holdSnapped = true;
+      // Replace the in-progress stroke visually with snapped version
+      curStroke = makeShapeStroke(snap, curStroke);
+      render();
+    }
+  }, 700);
+}
+
+function commitStroke(stroke) {
+  undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
+  if (undoStacks[curPage].length > 60) undoStacks[curPage].shift();
+  redoStacks[curPage] = [];
+  pages[curPage].push(stroke);
+  updateThumb(curPage);
+  syncUndoRedo();
+  render();
 }
 
 function onPointerUp(e) {
@@ -714,24 +749,18 @@ function onPointerUp(e) {
   }
 
   if (drawing && curStroke) {
-    if (curStroke.pts.length > 0) {
-      // Commit stroke: save undo snapshot, clear redo
-      undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
-      if (undoStacks[curPage].length > 60) undoStacks[curPage].shift();
-      redoStacks[curPage] = []; // new stroke clears redo
-      pages[curPage].push(curStroke);
-      // Try shape recognition (only when snapOn)
-      const snap = trySnapShape(curStroke);
-      if (snap) {
-        applySnap(curStroke, makeShapeStroke(snap, curStroke));
-      } else {
-        updateThumb(curPage);
-        syncUndoRedo();
-      }
+    resetHoldTimer();
+    const stroke = curStroke;
+    curStroke    = null;
+    drawing      = false;
+    holdSnapped  = false;
+
+    if (stroke.pts.length > 0) {
+      // Commit whatever curStroke was — freehand or already-snapped
+      commitStroke(stroke);
+    } else {
+      render();
     }
-    curStroke = null;
-    drawing   = false;
-    render();
   }
 
   if (pointerCount === 0) {
@@ -832,13 +861,8 @@ document.getElementById('pen-pill').style.setProperty('--cur-col', penCol);
    stroke to its key vertices, then classifies by vertex count.
    Order: LINE → TRIANGLE (3 pts) → RECT (4-5 pts) → CIRCLE
 ═══════════════════════════════════════════════════════ */
-let snapOn = false;
 
-function toggleSnap() {
-  snapOn = !snapOn;
-  document.getElementById('shape-btn').classList.toggle('snap-on', snapOn);
-  showToast(snapOn ? 'Shape recognition on' : 'Shape recognition off');
-}
+
 
 /* ── Ramer-Douglas-Peucker simplification ── */
 function rdp(pts, epsilon) {
@@ -873,7 +897,6 @@ function pathLength(pts) {
 }
 
 function trySnapShape(stroke) {
-  if (!snapOn) return null;
   const pts = stroke.pts;
   if (pts.length < 6 || stroke.erase) return null;
 
