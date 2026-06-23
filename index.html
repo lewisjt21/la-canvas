@@ -161,37 +161,48 @@ html, body {
   color: var(--yellow);
 }
 
-/* ── PEN UI — split button ── */
+/* ── PEN UI — single pill ── */
 #pen-ui-wrap {
   position: fixed; left: 16px; bottom: 68px;
   z-index: 90; display: flex; align-items: center; gap: 8px;
   touch-action: none;
 }
 
-#split-btn {
+#pen-pill {
   width: 44px; height: 44px; border-radius: 50%;
   background: var(--navylt);
   border: 1.5px solid rgba(255,255,255,.3);
-  display: flex; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 10px rgba(0,0,0,.4);
   flex-shrink: 0; position: relative;
+  color: white; cursor: pointer;
+  transition: background .15s;
 }
-.split-half {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  color: white; transition: background .15s; cursor: pointer;
-}
-.split-half:hover { background: rgba(255,255,255,.15); }
-.split-left { border-right: 1px solid rgba(255,255,255,.2); }
-.split-left.active { background: var(--yellow); color: var(--navy); }
-.split-right.active { background: rgba(255,255,255,.2); }
+#pen-pill:hover { background: var(--navy); }
 /* colour dot indicator */
-.split-left::after {
+#pen-pill::after {
   content: ''; position: absolute;
-  width: 7px; height: 7px; border-radius: 50%;
-  border: 1px solid white; bottom: 3px; left: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 1.5px solid white; bottom: 2px; right: 2px;
   background: var(--cur-col, #1a1a2e);
   transition: background .14s;
 }
+
+/* ── UNDO / REDO FABs — bottom right ── */
+#ur-wrap {
+  position: fixed; right: 16px; bottom: 68px;
+  z-index: 90; display: flex; flex-direction: column; gap: 8px;
+}
+#undo-fab, #redo-fab {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--navylt);
+  border: 1.5px solid rgba(255,255,255,.25);
+  color: white; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.35);
+  transition: background .13s;
+}
+#undo-fab:hover, #redo-fab:hover { background: var(--navy); }
+#undo-fab:disabled, #redo-fab:disabled { opacity: .3; cursor: default; }
 
 #pen-bar {
   display: flex; align-items: center; gap: 6px;
@@ -336,12 +347,6 @@ html, body {
       </svg>
     </button>
 
-    <!-- Undo -->
-    <button class="tbtn" id="undo-btn" onclick="undo()" title="Undo">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
-      </svg>
-    </button>
 
     <!-- Export PDF -->
     <button class="tbtn" id="pdf-btn" onclick="exportPDF()" title="Export PDF">
@@ -362,20 +367,13 @@ html, body {
 
 </div>
 
-<!-- PEN UI — split button: left=draw toggle, right=palette toggle -->
+<!-- PEN UI — single pill: tap to open/close options -->
 <div id="pen-ui-wrap">
-  <div id="split-btn">
-    <div class="split-half split-left" id="draw-toggle" title="Toggle Draw">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor"/>
-        <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
-      </svg>
-    </div>
-    <div class="split-half split-right" id="palette-toggle" title="Pen options">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="9 18 15 12 9 6"></polyline>
-      </svg>
-    </div>
+  <div id="pen-pill" title="Pen options">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor"/>
+      <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+    </svg>
   </div>
   <div id="pen-bar" class="hidden">
     <div class="csw active" style="background:#1a1a2e" data-c="#1a1a2e" title="Black"></div>
@@ -391,6 +389,20 @@ html, body {
     <button class="pact" id="erase-btn" title="Eraser">&#9003;</button>
     <button class="pact danger" id="clear-btn" title="Clear page">&#10005;</button>
   </div>
+</div>
+
+<!-- UNDO / REDO — bottom right -->
+<div id="ur-wrap">
+  <button id="undo-fab" onclick="undo()" title="Undo">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+    </svg>
+  </button>
+  <button id="redo-fab" onclick="redo()" title="Redo">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>
+    </svg>
+  </button>
 </div>
 
 <!-- PDF OVERLAY -->
@@ -445,14 +457,14 @@ let curPage  = 0;
 let drawing  = false;
 let curStroke = null;
 
-// Tool state
-let drawOn  = false;
+// Tool state (drawOn removed — pen/mouse always draws)
 let eraseOn = false;
 let penCol  = '#1a1a2e';
 let penSz   = 3;
 
-// Undo stack per page
-let undoStacks = [ [] ];  // undoStacks[page] = array of stroke snapshots
+// Undo / redo stacks per page
+let undoStacks = [ [] ];
+let redoStacks = [ [] ];
 
 // Gesture state
 let lastTouchDist = null;
@@ -600,38 +612,44 @@ canvas.addEventListener('pointermove', onPointerMove, { passive: false });
 canvas.addEventListener('pointerup',   onPointerUp);
 canvas.addEventListener('pointercancel', onPointerUp);
 
+function isPenOrMouse(e) {
+  // pen and mouse always draw; touch always pans
+  return e.pointerType === 'pen' || e.pointerType === 'mouse';
+}
+
 function onPointerDown(e) {
   e.preventDefault();
-  activePointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  activePointers[e.pointerId] = { x: e.clientX, y: e.clientY, type: e.pointerType };
   canvas.setPointerCapture(e.pointerId);
 
   const pointerCount = Object.keys(activePointers).length;
 
-  if (pointerCount === 1) {
-    if (drawOn) {
-      // Start stroke
-      drawing = true;
-      const v = toVirt(e.clientX - wrap.getBoundingClientRect().left,
-                       e.clientY - wrap.getBoundingClientRect().top);
-      curStroke = { col: penCol, size: penSz, erase: eraseOn, pts: [v] };
-    } else {
-      // Start pan
+  if (isPenOrMouse(e) && pointerCount === 1) {
+    // Pen / mouse always draws
+    drawing = true;
+    const rect = wrap.getBoundingClientRect();
+    const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
+    curStroke = { col: penCol, size: penSz, erase: eraseOn, pts: [v] };
+  } else if (!isPenOrMouse(e)) {
+    // Touch input
+    if (pointerCount === 1) {
+      // Single finger = pan
       panning     = true;
       panStart    = { x: e.clientX, y: e.clientY };
       panOffStart = { x: offsetX, y: offsetY };
+    } else if (pointerCount === 2) {
+      // Two fingers = pinch zoom — cancel any pan
+      drawing    = false;
+      panning    = false;
+      curStroke  = null;
+      const pts  = Object.values(activePointers);
+      lastTouchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      lastTouchMid  = {
+        x: (pts[0].x + pts[1].x) / 2 - wrap.getBoundingClientRect().left,
+        y: (pts[0].y + pts[1].y) / 2 - wrap.getBoundingClientRect().top
+      };
+      render();
     }
-  } else if (pointerCount === 2) {
-    // Cancel any ongoing stroke or pan, switch to pinch-zoom
-    drawing    = false;
-    panning    = false;
-    curStroke  = null;
-    const pts  = Object.values(activePointers);
-    lastTouchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-    lastTouchMid  = {
-      x: (pts[0].x + pts[1].x) / 2 - wrap.getBoundingClientRect().left,
-      y: (pts[0].y + pts[1].y) / 2 - wrap.getBoundingClientRect().top
-    };
-    render();
   }
 }
 
@@ -690,11 +708,20 @@ function onPointerUp(e) {
 
   if (drawing && curStroke) {
     if (curStroke.pts.length > 0) {
-      // Save undo snapshot before committing
+      // Commit stroke: save undo snapshot, clear redo
       undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
-      if (undoStacks[curPage].length > 50) undoStacks[curPage].shift();
+      if (undoStacks[curPage].length > 60) undoStacks[curPage].shift();
+      redoStacks[curPage] = []; // new stroke clears redo
       pages[curPage].push(curStroke);
-      updateThumb(curPage);
+      // Try shape recognition
+      const snap = trySnapShape(curStroke);
+      if (snap) {
+        const snappedStroke = makeShapeStroke(snap, curStroke);
+        offerSnap(curStroke, snappedStroke);
+      } else {
+        updateThumb(curPage);
+        syncUndoRedo();
+      }
     }
     curStroke = null;
     drawing   = false;
@@ -716,40 +743,24 @@ wrap.addEventListener('wheel', e => {
   applyZoom(scale * factor, pivot.x, pivot.y);
 }, { passive: false });
 
-/* ── TOOL CONTROLS — split button ── */
-let paletteOn = false;
+/* ── TOOL CONTROLS ── */
+// Pen/mouse → always draws; touch → always pans.
+// No manual draw toggle needed. Pill just opens/closes options.
 
-function toggleDraw() {
-  drawOn = !drawOn;
-  document.getElementById('draw-toggle').classList.toggle('active', drawOn);
-  if (!drawOn) { eraseOn = false; syncErase(); }
-  syncCvCursor();
-}
+let paletteOn = false;
 
 function togglePalette() {
   paletteOn = !paletteOn;
-  const rightHalf = document.getElementById('palette-toggle');
-  rightHalf.classList.toggle('active', paletteOn);
-  rightHalf.innerHTML = paletteOn
-    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'
-    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
   document.getElementById('pen-bar').classList.toggle('hidden', !paletteOn);
 }
 
 function toggleErase() {
-  if (!drawOn) toggleDraw();
   eraseOn = !eraseOn;
   syncErase();
-  syncCvCursor();
 }
 
 function syncErase() {
   document.getElementById('erase-btn').classList.toggle('erase-on', eraseOn);
-}
-
-function syncCvCursor() {
-  if (!canvas) return;
-  canvas.style.cursor = drawOn ? (eraseOn ? 'cell' : 'crosshair') : 'default';
 }
 
 function setCol(el) {
@@ -757,9 +768,7 @@ function setCol(el) {
   el.classList.add('active');
   penCol  = el.dataset.c;
   eraseOn = false; syncErase();
-  document.getElementById('draw-toggle').style.setProperty('--cur-col', penCol);
-  if (!drawOn) toggleDraw();
-  syncCvCursor();
+  document.getElementById('pen-pill').style.setProperty('--cur-col', penCol);
 }
 
 function setSz(el) {
@@ -768,23 +777,22 @@ function setSz(el) {
   penSz = parseInt(el.dataset.s);
 }
 
-// Wire up event delegation on pen-bar
+// Event delegation on pen-bar
 document.getElementById('pen-bar').addEventListener('pointerup', e => {
-  if (e.target.closest('.csw')) setCol(e.target.closest('.csw'));
+  if (e.target.closest('.csw'))       setCol(e.target.closest('.csw'));
   else if (e.target.closest('.psz')) setSz(e.target.closest('.psz'));
   else if (e.target.closest('#erase-btn')) toggleErase();
   else if (e.target.closest('#clear-btn')) clearPage();
 });
 
-// Wire up split button — use pointerdown with drag detection
+// Pen pill — draggable + tap to toggle palette
 const penWrap = document.getElementById('pen-ui-wrap');
 let isUIDragging = false, uiWasDragged = false;
-let dragStartX, dragStartY, uiStartLeft, uiStartTop, initialTarget = null;
+let dragStartX, dragStartY, uiStartLeft, uiStartTop;
 
 penWrap.addEventListener('pointerdown', e => {
   if (e.target.closest('#pen-bar')) return;
   isUIDragging = true; uiWasDragged = false;
-  initialTarget = e.target;
   dragStartX = e.clientX; dragStartY = e.clientY;
   const r = penWrap.getBoundingClientRect();
   uiStartLeft = r.left; uiStartTop = r.top;
@@ -806,39 +814,209 @@ penWrap.addEventListener('pointerup', e => {
   if (!isUIDragging) return;
   isUIDragging = false;
   penWrap.releasePointerCapture(e.pointerId);
-  if (!uiWasDragged && initialTarget) {
-    if (initialTarget.closest('#draw-toggle'))    toggleDraw();
-    else if (initialTarget.closest('#palette-toggle')) togglePalette();
-  }
-  initialTarget = null;
+  if (!uiWasDragged) togglePalette();
 });
 
-document.getElementById('draw-toggle').style.setProperty('--cur-col', penCol);
+document.getElementById('pen-pill').style.setProperty('--cur-col', penCol);
 
-/* ── UNDO ── */
+
+/* ═══════════════════════════════════════════════════════
+   AUTO SHAPE RECOGNITION
+   On stroke end, check if it matches a geometric primitive.
+   Threshold tuning: SHAPE_THRESH controls how "rough" a
+   stroke must be to trigger snap (0=perfect, 1=very rough).
+═══════════════════════════════════════════════════════ */
+const SHAPE_THRESH = 0.18; // tolerance for shape detection
+
+function trySnapShape(stroke) {
+  const pts = stroke.pts;
+  if (pts.length < 4 || stroke.erase) return null;
+
+  // Bounding box
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for (const p of pts) {
+    if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
+    if(p.x>maxX)maxX=p.x; if(p.y>maxY)maxY=p.y;
+  }
+  const bW=maxX-minX, bH=maxY-minY;
+  const strokeLen = pathLength(pts);
+
+  // ── LINE: very straight, short bounding box perpendicular ──
+  const endDist = Math.hypot(pts[pts.length-1].x - pts[0].x, pts[pts.length-1].y - pts[0].y);
+  const lineRatio = endDist / strokeLen;
+  if (lineRatio > 0.88 && pts.length >= 4) {
+    return { type:'line', x1:pts[0].x, y1:pts[0].y, x2:pts[pts.length-1].x, y2:pts[pts.length-1].y };
+  }
+
+  // ── CLOSED shape: start and end are close ──
+  const closeDist = Math.hypot(pts[pts.length-1].x - pts[0].x, pts[pts.length-1].y - pts[0].y);
+  const isClosed = closeDist < strokeLen * 0.25;
+
+  if (isClosed && pts.length >= 8) {
+    const diagonal = Math.hypot(bW, bH);
+
+    // ── CIRCLE: perimeter ≈ 2πr, and shape is roughly circular ──
+    const circlePerim = Math.PI * Math.hypot(bW, bH) / Math.SQRT2;
+    const circleRatio = Math.abs(strokeLen - circlePerim) / circlePerim;
+    const aspectRatio = bW > 0 && bH > 0 ? Math.min(bW,bH)/Math.max(bW,bH) : 0;
+    if (circleRatio < SHAPE_THRESH * 1.5 && aspectRatio > 0.6) {
+      const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+      const r=Math.hypot(bW,bH)/2 * 0.92;
+      return { type:'circle', cx, cy, r };
+    }
+
+    // ── RECTANGLE: 4 corners, sides roughly horizontal/vertical ──
+    const corners = findCorners(pts);
+    if (corners.length === 4) {
+      return { type:'rect', x:minX, y:minY, w:bW, h:bH };
+    }
+
+    // ── TRIANGLE: 3 corners ──
+    if (corners.length === 3) {
+      return { type:'triangle', pts: corners };
+    }
+  }
+
+  return null;
+}
+
+function pathLength(pts) {
+  let len = 0;
+  for (let i=1;i<pts.length;i++) len+=Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+  return len;
+}
+
+function findCorners(pts) {
+  // Find significant direction changes (corners)
+  const n = pts.length;
+  const windowSize = Math.max(3, Math.floor(n * 0.06));
+  const corners = [];
+
+  for (let i = windowSize; i < n - windowSize; i++) {
+    const before = Math.atan2(pts[i].y - pts[i-windowSize].y, pts[i].x - pts[i-windowSize].x);
+    const after  = Math.atan2(pts[i+windowSize].y - pts[i].y, pts[i+windowSize].x - pts[i].x);
+    let diff = Math.abs(after - before);
+    if (diff > Math.PI) diff = 2*Math.PI - diff;
+    if (diff > Math.PI * 0.35) {
+      // Check this isn't too close to an existing corner
+      if (corners.length === 0 || Math.hypot(pts[i].x-corners[corners.length-1].x, pts[i].y-corners[corners.length-1].y) > 20) {
+        corners.push(pts[i]);
+        i += windowSize; // skip ahead
+      }
+    }
+  }
+  return corners;
+}
+
+function makeShapeStroke(shape, original) {
+  // Convert detected shape into a stroke with clean geometric points
+  const base = { col: original.col, size: original.size, erase: false };
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for (const p of original.pts) {
+    if(p.x<minX)minX=p.x; if(p.y<minY)minY=p.y;
+    if(p.x>maxX)maxX=p.x; if(p.y>maxY)maxY=p.y;
+  }
+
+  if (shape.type === 'line') {
+    base.pts = [{x:shape.x1,y:shape.y1},{x:shape.x2,y:shape.y2}];
+  } else if (shape.type === 'rect') {
+    const {x,y,w,h} = shape;
+    base.pts = [{x,y},{x:x+w,y},{x:x+w,y:y+h},{x,y:y+h},{x,y}];
+  } else if (shape.type === 'circle') {
+    const {cx,cy,r} = shape;
+    const pts=[];
+    for (let a=0;a<=Math.PI*2+0.01;a+=Math.PI/36) pts.push({x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r});
+    base.pts = pts;
+  } else if (shape.type === 'triangle') {
+    const tp = shape.pts;
+    base.pts = [tp[0],tp[1],tp[2],tp[0]];
+  }
+  return base;
+}
+
+let pendingSnap = null; // { original, snapped } waiting for user decision
+
+function offerSnap(original, snapped) {
+  pendingSnap = { original, snapped };
+  // Replace stroke with snapped version immediately (reversible)
+  const idx = pages[curPage].length - 1;
+  pages[curPage][idx] = snapped;
+  render();
+
+  // Show toast with accept/reject
+  const t = document.getElementById('toast');
+  t.innerHTML = 'Shape detected &nbsp;<button onclick="keepShape()" style="background:var(--yellow);color:var(--navy);border:none;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">Keep</button>&nbsp;<button onclick="keepFreehand()" style="background:rgba(255,255,255,.2);color:white;border:none;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">Freehand</button>';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  // Auto-accept after 3s
+  toastTimer = setTimeout(() => {
+    keepShape();
+  }, 3000);
+}
+
+function keepShape() {
+  pendingSnap = null;
+  const t = document.getElementById('toast');
+  t.classList.remove('show');
+  t.innerHTML='';
+  updateThumb(curPage);
+}
+
+function keepFreehand() {
+  if (!pendingSnap) return;
+  const idx = pages[curPage].length - 1;
+  pages[curPage][idx] = pendingSnap.original;
+  pendingSnap = null;
+  render();
+  const t = document.getElementById('toast');
+  t.classList.remove('show');
+  t.innerHTML='';
+  updateThumb(curPage);
+}
+
+/* ── UNDO / REDO ── */
+function syncUndoRedo() {
+  const ub = document.getElementById('undo-fab');
+  const rb = document.getElementById('redo-fab');
+  if (ub) ub.disabled = !undoStacks[curPage] || undoStacks[curPage].length === 0;
+  if (rb) rb.disabled = !redoStacks[curPage] || redoStacks[curPage].length === 0;
+}
+
 function undo() {
   if (!undoStacks[curPage] || undoStacks[curPage].length === 0) {
-    showToast('Nothing to undo');
-    return;
+    showToast('Nothing to undo'); return;
   }
+  // Save current state to redo stack
+  redoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
   pages[curPage] = undoStacks[curPage].pop();
-  render();
-  updateThumb(curPage);
+  render(); updateThumb(curPage); syncUndoRedo();
+}
+
+function redo() {
+  if (!redoStacks[curPage] || redoStacks[curPage].length === 0) {
+    showToast('Nothing to redo'); return;
+  }
+  undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
+  pages[curPage] = redoStacks[curPage].pop();
+  render(); updateThumb(curPage); syncUndoRedo();
 }
 
 /* ── CLEAR PAGE ── */
 function clearPage() {
   if (pages[curPage].length === 0) { showToast('Page already empty'); return; }
   undoStacks[curPage].push(JSON.parse(JSON.stringify(pages[curPage])));
+  redoStacks[curPage] = [];
   pages[curPage] = [];
   render();
   updateThumb(curPage);
+  syncUndoRedo();
 }
 
 /* ── PAGE MANAGEMENT ── */
 function addPage() {
   pages.push([]);
   undoStacks.push([]);
+  redoStacks.push([]);
   const idx = pages.length - 1;
   curPage = idx;
   buildPageStrip();
@@ -866,6 +1044,7 @@ function confirmDelete() {
   if (deleteTarget === null) return;
   pages.splice(deleteTarget, 1);
   undoStacks.splice(deleteTarget, 1);
+  redoStacks.splice(deleteTarget, 1);
   if (curPage >= pages.length) curPage = pages.length - 1;
   document.getElementById('del-confirm').classList.remove('active');
   deleteTarget = null;
@@ -1134,7 +1313,9 @@ window.addEventListener('beforeinstallprompt', e => {
 /* ── INIT ── */
 resizeCanvas();
 buildPageStrip();
-showToast('Pan with one finger · Pinch to zoom · Tap ✏ to draw');
+syncUndoRedo();
+// Touch = pan/zoom, Pen/mouse = draw automatically
+console.log('LA Canvas ready — pen draws, finger pans');
 </script>
 
 <script>
