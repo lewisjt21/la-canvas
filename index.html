@@ -95,9 +95,7 @@ html, body {
 /* ── CANVAS AREA ── */
 #canvas-wrap {
   flex: 1; position: relative; overflow: hidden;
-  background-color: #f7f9fd;
-  background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.2px);
-  background-size: 22px 22px;
+  background: #f7f9fd;
 }
 
 #main-canvas {
@@ -131,6 +129,16 @@ html, body {
 .page-thumb:hover { border-color: rgba(255,255,255,.4); transform: scale(1.05); }
 .page-thumb.active { border-color: var(--yellow); }
 .page-thumb canvas { width: 100%; height: 100%; display: block; }
+.thumb-del {
+  position: absolute; top: 2px; right: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(192,57,43,0.85); color: white;
+  border: none; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .15s;
+  line-height: 1; padding: 0;
+}
+.page-thumb:hover .thumb-del { opacity: 1; }
 .page-thumb .pg-num {
   position: absolute; bottom: 2px; right: 4px;
   font-size: 8px; font-weight: 700;
@@ -153,79 +161,81 @@ html, body {
   color: var(--yellow);
 }
 
-/* ── FLOATING PEN UI ── */
-#pen-ui {
-  position: absolute;
-  bottom: 72px; left: 16px;
-  z-index: 90;
-  display: flex; align-items: flex-end; gap: 8px;
+/* ── PEN UI — split button ── */
+#pen-ui-wrap {
+  position: fixed; left: 16px; bottom: 68px;
+  z-index: 90; display: flex; align-items: center; gap: 8px;
   touch-action: none;
 }
 
-#pen-circle {
+#split-btn {
   width: 44px; height: 44px; border-radius: 50%;
-  background: var(--navy);
-  border: 2.5px solid rgba(255,255,255,.25);
-  box-shadow: 0 4px 16px rgba(0,0,0,.4);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; flex-shrink: 0;
-  transition: all .16s; position: relative;
+  background: var(--navylt);
+  border: 1.5px solid rgba(255,255,255,.3);
+  display: flex; overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0,0,0,.4);
+  flex-shrink: 0; position: relative;
 }
-#pen-circle:hover { background: var(--navylt); transform: scale(1.06); }
-#pen-circle.on { background: var(--yellow); border-color: white; box-shadow: 0 4px 20px rgba(255,196,37,.5); }
-#pen-circle::after {
+.split-half {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  color: white; transition: background .15s; cursor: pointer;
+}
+.split-half:hover { background: rgba(255,255,255,.15); }
+.split-left { border-right: 1px solid rgba(255,255,255,.2); }
+.split-left.active { background: var(--yellow); color: var(--navy); }
+.split-right.active { background: rgba(255,255,255,.2); }
+/* colour dot indicator */
+.split-left::after {
   content: ''; position: absolute;
-  width: 9px; height: 9px; border-radius: 50%;
-  border: 1.5px solid white; bottom: -1px; right: -1px;
-  background: var(--cur-col, #1a1a2e); transition: background .14s;
+  width: 7px; height: 7px; border-radius: 50%;
+  border: 1px solid white; bottom: 3px; left: 6px;
+  background: var(--cur-col, #1a1a2e);
+  transition: background .14s;
 }
 
-#tool-bar {
-  display: flex; align-items: center; gap: 5px;
-  background: var(--navydim);
-  border: 1.5px solid rgba(255,255,255,.18);
-  border-radius: 22px;
-  padding: 5px 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.4);
-  transition: opacity .16s, transform .16s;
+#pen-bar {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(31,56,100,0.95);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px; padding: 0 10px; height: 34px;
+  transition: max-width .3s cubic-bezier(0.4,0,0.2,1), opacity .2s ease, margin-left .3s ease;
+  max-width: 400px; overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,.3);
+  backdrop-filter: blur(4px);
 }
-#tool-bar.hidden {
-  opacity: 0; pointer-events: none; transform: translateX(-10px);
-}
+#pen-bar.hidden { max-width: 0; opacity: 0; padding: 0; border-width: 0; margin-left: -8px; }
 
-.pb-sep { width: 1px; height: 16px; background: rgba(255,255,255,.15); margin: 0 2px; }
+.pb-sep { width: 1px; height: 18px; background: rgba(255,255,255,.15); margin: 0 2px; }
 
 .csw {
-  width: 20px; height: 20px; border-radius: 50%;
+  width: 18px; height: 18px; border-radius: 50%;
   border: 2px solid transparent; cursor: pointer;
   transition: transform .12s; flex-shrink: 0;
 }
-.csw:hover { transform: scale(1.18); }
-.csw.active { border-color: white; box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+.csw:hover { transform: scale(1.2); }
+.csw.active { border-color: white; box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
 
-.tsz {
+.psz {
   background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
   color: white; border-radius: 4px; width: 22px; height: 22px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all .12s;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s; cursor: pointer; padding: 0;
 }
-.tsz:hover, .tsz.active { background: var(--yellow); color: var(--navy); border-color: var(--yellow); }
+.psz:hover, .psz.active { background: var(--yellow); color: var(--navy); border-color: var(--yellow); }
 
-.tact {
+.pact {
   background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
-  color: rgba(255,255,255,.8); border-radius: 5px; padding: 0 7px;
-  height: 22px; font-size: 10px; font-weight: 600;
-  font-family: 'Inter', sans-serif; cursor: pointer;
-  display: flex; align-items: center; gap: 4px; transition: all .13s;
-  white-space: nowrap;
+  color: rgba(255,255,255,.85); border-radius: 4px;
+  width: 24px; height: 24px; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .13s; cursor: pointer;
 }
-.tact:hover { background: rgba(255,255,255,.18); }
-.tact.erase-on { background: #c0392b; color: white; border-color: #c0392b; }
-.tact.danger:hover { background: #c0392b; color: white; border-color: #c0392b; }
+.pact:hover { background: rgba(255,255,255,.2); color: white; }
+.pact.danger:hover, .pact.erase-on { background: #c0392b; color: white; border-color: #c0392b; }
 
 /* ── ZOOM INDICATOR ── */
 #zoom-pill {
-  position: absolute; bottom: 72px; right: 16px;
+  position: absolute; bottom: 16px; right: 16px;
   background: rgba(31,56,100,.8);
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 20px; padding: 4px 10px;
@@ -305,15 +315,14 @@ html, body {
   <!-- TOPBAR -->
   <div id="topbar">
     <div class="badge">LA</div>
-    <span id="app-title">Untitled Canvas</span>
-
-    <!-- Title edit on tap -->
-    <button class="tbtn" id="title-btn" onclick="editTitle()" title="Rename">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+    <!-- Title edit sits left of title -->
+    <button class="tbtn" id="title-btn" onclick="editTitle()" title="Rename" style="min-width:26px;width:26px;padding:0;flex-shrink:0">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
+    <span id="app-title" style="margin-left:2px">Untitled Canvas</span>
 
     <div style="flex:1"></div>
 
@@ -353,36 +362,34 @@ html, body {
 
 </div>
 
-<!-- PEN UI (outside #app so it can float freely) -->
-<div id="pen-ui">
-  <div id="pen-circle" onclick="toggleDraw()" title="Draw on/off">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor"/>
-      <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
-    </svg>
+<!-- PEN UI — split button: left=draw toggle, right=palette toggle -->
+<div id="pen-ui-wrap">
+  <div id="split-btn">
+    <div class="split-half split-left" id="draw-toggle" title="Toggle Draw">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="currentColor"/>
+        <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="split-half split-right" id="palette-toggle" title="Pen options">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </div>
   </div>
-  <div id="tool-bar" class="hidden">
-    <!-- Colours -->
+  <div id="pen-bar" class="hidden">
     <div class="csw active" style="background:#1a1a2e" data-c="#1a1a2e" title="Black"></div>
     <div class="csw" style="background:#c0392b" data-c="#c0392b" title="Red"></div>
     <div class="csw" style="background:#1565c0" data-c="#1565c0" title="Blue"></div>
     <div class="csw" style="background:#2e7d32" data-c="#2e7d32" title="Green"></div>
     <div class="csw" style="background:#FFC425" data-c="#FFC425" title="Yellow"></div>
     <div class="pb-sep"></div>
-    <!-- Sizes -->
-    <button class="tsz active" data-s="3" title="Fine">
-      <svg width="8" height="8"><circle cx="4" cy="4" r="2" fill="currentColor"/></svg>
-    </button>
-    <button class="tsz" data-s="6" title="Medium">
-      <svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg>
-    </button>
-    <button class="tsz" data-s="12" title="Thick">
-      <svg width="13" height="13"><circle cx="6.5" cy="6.5" r="5.5" fill="currentColor"/></svg>
-    </button>
+    <button class="psz active" data-s="3" title="Fine"><svg width="8" height="8"><circle cx="4" cy="4" r="2" fill="currentColor"/></svg></button>
+    <button class="psz" data-s="6" title="Medium"><svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg></button>
+    <button class="psz" data-s="12" title="Thick"><svg width="13" height="13"><circle cx="6.5" cy="6.5" r="5.5" fill="currentColor"/></svg></button>
     <div class="pb-sep"></div>
-    <!-- Actions -->
-    <button class="tact" id="erase-btn" onclick="toggleErase()" title="Eraser">&#9003;</button>
-    <button class="tact danger" onclick="clearPage()" title="Clear page">&#10005;</button>
+    <button class="pact" id="erase-btn" title="Eraser">&#9003;</button>
+    <button class="pact danger" id="clear-btn" title="Clear page">&#10005;</button>
   </div>
 </div>
 
@@ -709,25 +716,40 @@ wrap.addEventListener('wheel', e => {
   applyZoom(scale * factor, pivot.x, pivot.y);
 }, { passive: false });
 
-/* ── TOOL CONTROLS ── */
+/* ── TOOL CONTROLS — split button ── */
+let paletteOn = false;
+
 function toggleDraw() {
   drawOn = !drawOn;
-  const c = document.getElementById('pen-circle');
-  c.classList.toggle('on', drawOn);
-  document.getElementById('tool-bar').classList.toggle('hidden', !drawOn);
+  document.getElementById('draw-toggle').classList.toggle('active', drawOn);
   if (!drawOn) { eraseOn = false; syncErase(); }
-  canvas.style.cursor = drawOn ? (eraseOn ? 'cell' : 'crosshair') : 'grab';
+  syncCvCursor();
+}
+
+function togglePalette() {
+  paletteOn = !paletteOn;
+  const rightHalf = document.getElementById('palette-toggle');
+  rightHalf.classList.toggle('active', paletteOn);
+  rightHalf.innerHTML = paletteOn
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+  document.getElementById('pen-bar').classList.toggle('hidden', !paletteOn);
 }
 
 function toggleErase() {
   if (!drawOn) toggleDraw();
   eraseOn = !eraseOn;
   syncErase();
-  canvas.style.cursor = eraseOn ? 'cell' : 'crosshair';
+  syncCvCursor();
 }
 
 function syncErase() {
   document.getElementById('erase-btn').classList.toggle('erase-on', eraseOn);
+}
+
+function syncCvCursor() {
+  if (!canvas) return;
+  canvas.style.cursor = drawOn ? (eraseOn ? 'cell' : 'crosshair') : 'default';
 }
 
 function setCol(el) {
@@ -735,22 +757,63 @@ function setCol(el) {
   el.classList.add('active');
   penCol  = el.dataset.c;
   eraseOn = false; syncErase();
-  document.getElementById('pen-circle').style.setProperty('--cur-col', penCol);
-  canvas.style.cursor = 'crosshair';
+  document.getElementById('draw-toggle').style.setProperty('--cur-col', penCol);
+  if (!drawOn) toggleDraw();
+  syncCvCursor();
 }
 
 function setSz(el) {
-  document.querySelectorAll('.tsz').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.psz').forEach(s => s.classList.remove('active'));
   el.classList.add('active');
   penSz = parseInt(el.dataset.s);
 }
 
-// Wire up colour and size buttons
-document.querySelectorAll('.csw').forEach(el => el.addEventListener('click', () => setCol(el)));
-document.querySelectorAll('.tsz').forEach(el => el.addEventListener('click', () => setSz(el)));
+// Wire up event delegation on pen-bar
+document.getElementById('pen-bar').addEventListener('pointerup', e => {
+  if (e.target.closest('.csw')) setCol(e.target.closest('.csw'));
+  else if (e.target.closest('.psz')) setSz(e.target.closest('.psz'));
+  else if (e.target.closest('#erase-btn')) toggleErase();
+  else if (e.target.closest('#clear-btn')) clearPage();
+});
 
-document.getElementById('pen-circle').style.setProperty('--cur-col', penCol);
-canvas.style.cursor = 'grab';
+// Wire up split button — use pointerdown with drag detection
+const penWrap = document.getElementById('pen-ui-wrap');
+let isUIDragging = false, uiWasDragged = false;
+let dragStartX, dragStartY, uiStartLeft, uiStartTop, initialTarget = null;
+
+penWrap.addEventListener('pointerdown', e => {
+  if (e.target.closest('#pen-bar')) return;
+  isUIDragging = true; uiWasDragged = false;
+  initialTarget = e.target;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  const r = penWrap.getBoundingClientRect();
+  uiStartLeft = r.left; uiStartTop = r.top;
+  penWrap.setPointerCapture(e.pointerId);
+});
+
+penWrap.addEventListener('pointermove', e => {
+  if (!isUIDragging) return;
+  const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
+  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+    uiWasDragged = true;
+    penWrap.style.left   = (uiStartLeft + dx) + 'px';
+    penWrap.style.top    = (uiStartTop  + dy) + 'px';
+    penWrap.style.bottom = 'auto';
+  }
+});
+
+penWrap.addEventListener('pointerup', e => {
+  if (!isUIDragging) return;
+  isUIDragging = false;
+  penWrap.releasePointerCapture(e.pointerId);
+  if (!uiWasDragged && initialTarget) {
+    if (initialTarget.closest('#draw-toggle'))    toggleDraw();
+    else if (initialTarget.closest('#palette-toggle')) togglePalette();
+  }
+  initialTarget = null;
+});
+
+document.getElementById('draw-toggle').style.setProperty('--cur-col', penCol);
 
 /* ── UNDO ── */
 function undo() {
@@ -831,18 +894,17 @@ function buildPageStrip() {
     num.textContent = i + 1;
     thumb.appendChild(num);
 
+    // Visible delete button on each thumb
+    if (pages.length > 1) {
+      const del = document.createElement('button');
+      del.className = 'thumb-del';
+      del.textContent = '×';
+      del.addEventListener('pointerup', e => { e.stopPropagation(); deletePage(i); });
+      thumb.appendChild(del);
+    }
+
     thumb.addEventListener('click', () => switchPage(i));
-    thumb.addEventListener('contextmenu', e => {
-      e.preventDefault();
-      deletePage(i);
-    });
-    // Long press for delete on touch
-    let longPressTimer;
-    thumb.addEventListener('touchstart', () => {
-      longPressTimer = setTimeout(() => deletePage(i), 600);
-    }, { passive: true });
-    thumb.addEventListener('touchend', () => clearTimeout(longPressTimer));
-    thumb.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+    thumb.addEventListener('contextmenu', e => { e.preventDefault(); deletePage(i); });
 
     strip.insertBefore(thumb, addBtn);
     renderThumb(i, tc);
@@ -962,34 +1024,30 @@ async function exportPDF() {
       }
     }
 
-    // Off-screen canvas at 2× for quality
-    const dpr = 2;
-    const oc  = document.createElement('canvas');
-    const pad = 40; // virtual units padding
+    // Off-screen canvas at A4 300dpi = 3508×2480px
+    const PDF_W_PX = 3508, PDF_H_PX = 2480;
+    const pad = 60; // virtual units padding
 
-    let renderScale, renderOffX, renderOffY, ocW, ocH;
+    const oc = document.createElement('canvas');
+    oc.width  = PDF_W_PX;
+    oc.height = PDF_H_PX;
+
+    let renderScale, renderOffX, renderOffY;
+    const ocW = PDF_W_PX, ocH = PDF_H_PX;
 
     if (minX === Infinity) {
-      // Blank page — render small placeholder
-      ocW = Math.round(pW * dpr * 3);
-      ocH = Math.round(pH * dpr * 3);
-      oc.width  = ocW;
-      oc.height = ocH;
-      renderScale = 3;
-      renderOffX  = 0;
-      renderOffY  = 0;
+      // Blank page
+      renderScale = 4;
+      renderOffX  = PDF_W_PX / 2;
+      renderOffY  = PDF_H_PX / 2;
     } else {
       const bW = (maxX - minX) + pad * 2;
       const bH = (maxY - minY) + pad * 2;
-      // Scale to fit A4
-      const fitScale = Math.min(pW * dpr / bW, pH * dpr / bH);
-      renderScale = fitScale;
-      ocW = Math.ceil(bW * renderScale);
-      ocH = Math.ceil(bH * renderScale);
-      oc.width  = ocW;
-      oc.height = ocH;
-      renderOffX = (-minX + pad) * renderScale;
-      renderOffY = (-minY + pad) * renderScale;
+      // Scale to fill the 300dpi canvas, preserving aspect ratio
+      renderScale = Math.min(PDF_W_PX / bW, PDF_H_PX / bH);
+      // Centre within the canvas
+      renderOffX = (PDF_W_PX - bW * renderScale) / 2 + (-minX + pad) * renderScale;
+      renderOffY = (PDF_H_PX - bH * renderScale) / 2 + (-minY + pad) * renderScale;
     }
 
     const oc_ctx = oc.getContext('2d');
@@ -1033,22 +1091,10 @@ async function exportPDF() {
       oc_ctx.restore();
     }
 
-    // Add to PDF
+    // Add to PDF — always fills full A4 landscape
     const imgData = oc.toDataURL('image/png');
     if (pi > 0) pdf.addPage('a4', 'landscape');
-
-    // Fit image into A4 maintaining aspect ratio
-    const imgW = ocW, imgH = ocH;
-    const ratio = imgW / imgH;
-    let fw = pW, fh = pH;
-    if (imgW / imgH > pW / pH) {
-      fh = pW / ratio;
-    } else {
-      fw = pH * ratio;
-    }
-    const fx = (pW - fw) / 2;
-    const fy = (pH - fh) / 2;
-    pdf.addImage(imgData, 'PNG', fx, fy, fw, fh);
+    pdf.addImage(imgData, 'PNG', 0, 0, pW, pH, undefined, 'FAST');
   }
 
   const title = document.getElementById('app-title').textContent.replace(/\s+/g, '_') || 'canvas';
