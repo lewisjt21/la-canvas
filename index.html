@@ -1512,11 +1512,11 @@ async function importLesson(){
   // positioning so html2canvas captures it at the correct baseline.
   try {
     const style = iframe.contentDocument.createElement('style');
-    style.textContent = \`
-      mjx-container { display: inline-block !important; vertical-align: middle !important; }
-      mjx-container svg { display: block !important; }
-      .MathJax { display: inline-block !important; vertical-align: middle !important; }
-    \`;
+    style.textContent = [
+      'mjx-container { display: inline-block !important; vertical-align: middle !important; }',
+      'mjx-container svg { display: block !important; }',
+      '.MathJax { display: inline-block !important; vertical-align: middle !important; }'
+    ].join('\n');
     iframe.contentDocument.head.appendChild(style);
     await new Promise(r=>setTimeout(r, 300));
   } catch(e){}
