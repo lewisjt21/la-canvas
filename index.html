@@ -1831,6 +1831,97 @@ function resetIframe(){
 
 
 
+
+/* ── SECTION DROPDOWNS (built after lesson import) ── */
+function buildSectionDropdowns(){
+  const container=document.getElementById('lesson-btns');
+  if(!container)return;
+  container.innerHTML='';
+
+  const hasSections=SECTION_ORDER.some(s=>lessonSections[s]&&lessonSections[s].length);
+  if(!hasSections){
+    const btn=document.createElement('button');btn.className='tbtn';btn.textContent='＋ Lesson';
+    btn.onclick=openLessonModal;container.appendChild(btn);
+    return;
+  }
+
+  // Re-import button
+  const reBtn=document.createElement('button');
+  reBtn.className='tbtn';reBtn.title='Re-import lesson';
+  reBtn.style.cssText='min-width:22px;width:22px;padding:0;font-size:11px';
+  reBtn.textContent='↺';reBtn.onclick=openLessonModal;
+  container.appendChild(reBtn);
+
+  SECTION_ORDER.forEach(sec=>{
+    const slides=lessonSections[sec];
+    if(!slides||!slides.length)return;
+
+    if(slides.length===1){
+      const btn=document.createElement('button');btn.className='tbtn';
+      btn.textContent=SECTION_LABELS[sec];
+      btn.addEventListener('pointerdown',e=>{e.stopPropagation();insertLessonSlide(slides[0],sec)});
+      container.appendChild(btn);
+    } else {
+      const wrap=document.createElement('div');wrap.className='sec-drop';
+      const btn=document.createElement('button');btn.className='sec-drop-btn';
+      btn.innerHTML=SECTION_LABELS[sec]+' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+      const menu=document.createElement('div');menu.className='sec-drop-menu';
+
+      slides.forEach((src,i)=>{
+        const item=document.createElement('div');item.className='sec-drop-item';
+        item.textContent=sec+' '+(i+1);
+        item.addEventListener('pointerdown',e=>{
+          e.stopPropagation();
+          menu.classList.remove('open');
+          insertLessonSlide(src, sec+' '+(i+1));
+        });
+        menu.appendChild(item);
+      });
+
+      btn.addEventListener('pointerdown',e=>{
+        e.stopPropagation();
+        const isOpen=menu.classList.contains('open');
+        document.querySelectorAll('.sec-drop-menu.open').forEach(m=>m.classList.remove('open'));
+        if(!isOpen){
+          const rect=btn.getBoundingClientRect();
+          menu.style.top=(rect.bottom+4)+'px';
+          menu.style.left=rect.left+'px';
+          menu.classList.add('open');
+        }
+      });
+
+      wrap.appendChild(btn);wrap.appendChild(menu);
+      container.appendChild(wrap);
+    }
+  });
+
+  document.addEventListener('pointerdown',e=>{
+    if(!e.target.closest('.sec-drop')){
+      document.querySelectorAll('.sec-drop-menu.open').forEach(m=>m.classList.remove('open'));
+    }
+  },{passive:true});
+}
+
+function insertLessonSlide(src, label){
+  const tempImg=new Image();
+  tempImg.onload=()=>{
+    const maxVW=(canvas.parentElement.offsetWidth*0.9)/scale;
+    const maxVH=(canvas.parentElement.offsetHeight*0.85)/scale;
+    let vw=tempImg.naturalWidth/scale, vh=tempImg.naturalHeight/scale;
+    if(vw>maxVW||vh>maxVH){const r=Math.min(maxVW/vw,maxVH/vh);vw*=r;vh*=r}
+    const cx=canvas.parentElement.offsetWidth/2, cy=canvas.parentElement.offsetHeight/2;
+    const vC=toVirt(cx,cy);
+    const imgObj={x:vC.x-vw/2,y:vC.y-vh/2,w:vw,h:vh,src,_el:null};
+    loadImgEl(imgObj);
+    undoStacks[curPage].push(snapshotPage());
+    if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
+    redoStacks[curPage]=[];
+    images().push(imgObj);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
+    showToast(label+' added to canvas');
+  };
+  tempImg.src=src;
+}
+
 /* ── INIT ── */
 openDB().then(()=>showHome()).catch(()=>{showToast('Boards cannot be saved in private browsing');newBoard()});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();showToast('Tip: Add to home screen to install')});
