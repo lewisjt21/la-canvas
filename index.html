@@ -1506,6 +1506,21 @@ async function importLesson(){
   // Final settle for any remaining async rendering
   await new Promise(r=>setTimeout(r, 800));
 
+  // ── MathJax CHTML fix for html2canvas ──
+  // CHTML uses CSS transforms on mjx-container which html2canvas misplaces.
+  // Inject a style that makes inline math display as inline-block with explicit
+  // positioning so html2canvas captures it at the correct baseline.
+  try {
+    const style = iframe.contentDocument.createElement('style');
+    style.textContent = \`
+      mjx-container { display: inline-block !important; vertical-align: middle !important; }
+      mjx-container svg { display: block !important; }
+      .MathJax { display: inline-block !important; vertical-align: middle !important; }
+    \`;
+    iframe.contentDocument.head.appendChild(style);
+    await new Promise(r=>setTimeout(r, 300));
+  } catch(e){}
+
   // Find all slides in the iframe document
   const iDoc = iframe.contentDocument;
   if(!iDoc){ showToast('Could not read lesson content'); importBtn.disabled=false; return; }
@@ -1516,30 +1531,46 @@ async function importLesson(){
   iframe.style.top='0';
 
   const sections = {'Starter':[],'I Do':[],'We Do':[],'You Do':[]};
-
-  // Find slides by section type — look for CORE_SLIDES in the iframe's JS context
-  // then activate each slide, screenshot it
   const iWin = iframe.contentWindow;
   let slideList = [];
 
+  // ── Primary: read CORE_SLIDES from iframe JS (most reliable for section ordering) ──
   try {
-    // Try to read CORE_SLIDES from the lesson JS
-    if(iWin.SLIDES){
-      slideList = iWin.SLIDES.map(s=>({sec:s.sec, id:s.id}));
-    } else if(iWin.CORE_SLIDES){
-      slideList = iWin.CORE_SLIDES.map(s=>({sec:s.sec, id:s.id}));
+    const coreSlides = iWin.CORE_SLIDES || null;
+    if(coreSlides && Array.isArray(coreSlides)){
+      coreSlides.forEach(s=>{
+        if(SECTION_ORDER.includes(s.sec)){
+          const el = iDoc.getElementById(s.id);
+          if(el) slideList.push({sec:s.sec, el});
+        }
+      });
     }
   } catch(e){}
 
+  // ── Fallback: DOM scan — covers all slides including We Do pair slides ──
   if(!slideList.length){
-    // Fallback: scan DOM for slide elements with section pill text
-    const allSlides = iDoc.querySelectorAll('.slide');
-    allSlides.forEach(slide=>{
-      const pill = slide.querySelector('.s-pill');
-      const sec  = pill ? pill.textContent.trim() : null;
-      if(sec && SECTION_ORDER.includes(sec)) slideList.push({sec, el:slide});
+    // Scan every element that could be a slide — includes .slide and .slide-extra
+    const allCandidates = iDoc.querySelectorAll('[id^="slide-"]');
+    allCandidates.forEach(el=>{
+      // Determine section from s-pill or pair-hdr
+      const pill    = el.querySelector('.s-pill');
+      const pairHdr = el.querySelector('.pair-hdr.ex');
+      let sec = null;
+      if(pill)    sec = pill.textContent.trim();
+      else if(pairHdr) sec = 'We Do'; // pair-shell slides are always We Do
+      if(sec && SECTION_ORDER.includes(sec)) slideList.push({sec, el});
+    });
+    // Also check ido-q slides (I Do slides have ido-q but no s-pill)
+    iDoc.querySelectorAll('[id^="slide-"]').forEach(el=>{
+      if(el.querySelector('.ido-q') && !el.querySelector('.s-pill')){
+        // Not already added
+        if(!slideList.find(s=>s.el===el)) slideList.push({sec:'I Do', el});
+      }
     });
   }
+
+  // Filter out blank canvas slide and extra slides that aren't core
+  slideList = slideList.filter(s=>s.el && s.el.id !== 'slide-blank');
 
   if(!slideList.length){
     showToast('No slides found — check the lesson HTML');
@@ -1555,35 +1586,27 @@ async function importLesson(){
 
     progressEl.textContent=`Capturing ${sec} (${i+1}/${slideList.length})…`;
 
-    // Activate this slide in the iframe
+    // Activate this slide: hide all others, show this one
     try {
-      if(item.el){
-        // DOM-based: show just this slide
-        iDoc.querySelectorAll('.slide').forEach(s=>{
-          s.style.display='none';s.classList.remove('active');
-        });
-        item.el.style.display='flex';item.el.classList.add('active');
-      } else if(iWin.go){
-        // Use lesson navigation to reach this slide index
-        const idx = slideList.indexOf(item)+1;
-        if(iWin.cur !== undefined) iWin.cur = idx;
-        // Activate slide directly
-        const slideEl = iDoc.getElementById(item.id);
-        if(slideEl){
-          iDoc.querySelectorAll('.slide').forEach(s=>{s.style.display='none';s.classList.remove('active')});
-          slideEl.style.display='flex';slideEl.classList.add('active');
-        }
-      }
+      // Hide all slides (including slide-extra)
+      iDoc.querySelectorAll('[id^="slide-"]').forEach(s=>{
+        s.style.display='none';
+        s.classList.remove('active');
+      });
+      // Show the target slide
+      item.el.style.display='flex';
+      item.el.classList.add('active');
+      item.el.style.position='relative';
+      item.el.style.width='1200px';
+      item.el.style.minHeight='700px';
     } catch(e){}
 
     await new Promise(r=>setTimeout(r, 250));
 
     // Screenshot the slide-area or the active slide
     try {
-      // Screenshot the active slide element specifically (more accurate than slide-area)
-      const slideArea = iDoc.getElementById('slide-area');
-      const activeSlide = slideArea ? (slideArea.querySelector('.slide.active') || slideArea) : iDoc.body;
-      const shotCanvas = await html2canvas(activeSlide, {
+      // Screenshot the active slide at full resolution
+      const shotCanvas = await html2canvas(item.el, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
@@ -1591,9 +1614,10 @@ async function importLesson(){
         logging: false,
         windowWidth: 1200,
         windowHeight: 800,
-        // Ensure MathJax SVGs are captured correctly
         foreignObjectRendering: false,
-        imageTimeout: 0
+        imageTimeout: 0,
+        width: 1200,
+        height: item.el.scrollHeight || 700
       });
       sections[sec].push(shotCanvas.toDataURL('image/png', 1.0));
     } catch(e){
