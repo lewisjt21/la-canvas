@@ -14,47 +14,140 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --navy:#1F3864;--navydim:#162a4e;--navylt:#2d4f8a;
-  --yellow:#FFC425;--white:#fff;--off:#f4f6fb;
-  --text:#1a1a2e;--green:#1a6b3a;
-  --dot:rgba(31,56,100,0.14);
-  --bg-colour:#f7f9fd;
+  --yellow:#FFC425;--white:#fff;--off:#f4f6fb;--text:#1a1a2e;
+  --dot:rgba(31,56,100,0.14);--bg-colour:#f7f9fd;
 }
 html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   background:var(--navydim);touch-action:none;user-select:none;-webkit-user-select:none}
 
-/* HOME */
+/* ── HOME ── */
 #home{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--navydim)}
 #home-bar{height:56px;flex-shrink:0;background:var(--navy);display:flex;align-items:center;
-  padding:0 20px;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+  padding:0 16px;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,.4);position:relative}
 .h-badge{width:32px;height:32px;background:var(--yellow);border-radius:7px;display:flex;
   align-items:center;justify-content:center;font-weight:700;color:var(--navy);font-size:11px;flex-shrink:0}
-#home-bar h1{font-size:16px;font-weight:700;color:var(--white);flex:1;letter-spacing:-.02em}
-#home-new-btn{height:34px;padding:0 16px;border-radius:8px;background:var(--yellow);color:var(--navy);
-  border:none;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;
-  display:flex;align-items:center;gap:6px;transition:opacity .13s;flex-shrink:0}
-#home-new-btn:hover{opacity:.88}
-#home-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px}
-#home-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;height:100%;color:rgba(255,255,255,.35);text-align:center}
-#home-empty svg{opacity:.25}
-#home-empty p{font-size:15px;font-weight:500}
-#home-empty span{font-size:13px;opacity:.7}
-#board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+#home-back{width:32px;height:32px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);
+  border-radius:7px;display:none;align-items:center;justify-content:center;
+  color:white;cursor:pointer;flex-shrink:0}
+#home-back:hover{background:rgba(255,255,255,.2)}
+#home-breadcrumb{flex:1;min-width:0}
+#home-breadcrumb h1{font-size:15px;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#home-breadcrumb .bc-sub{font-size:10px;color:rgba(255,255,255,.45);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-bar-btns{display:flex;gap:8px;flex-shrink:0}
+.h-btn{height:32px;padding:0 14px;border-radius:7px;border:none;font-size:12px;font-weight:700;
+  font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;transition:opacity .13s}
+.h-btn:hover{opacity:.85}
+.h-btn.primary{background:var(--yellow);color:var(--navy)}
+.h-btn.secondary{background:rgba(255,255,255,.12);color:white}
+
+#home-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px}
+
+/* Section label */
+.home-section{font-size:10px;font-weight:700;color:rgba(255,255,255,.35);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;margin-top:18px}
+.home-section:first-child{margin-top:0}
+
+/* Grid */
+.item-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:4px}
+
+/* Folder card */
+.folder-card{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
+  border-radius:11px;padding:14px 16px;cursor:pointer;position:relative;
+  transition:border-color .15s,transform .1s;display:flex;align-items:center;gap:10px}
+.folder-card:hover{border-color:var(--yellow);transform:scale(1.02)}
+.folder-card:active{transform:scale(.98)}
+.folder-icon{font-size:22px;flex-shrink:0;line-height:1}
+.folder-info{flex:1;min-width:0}
+.folder-name{font-size:13px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.folder-count{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+
+/* Board card */
 .board-card{background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.12);
-  border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s,transform .1s;
-  display:flex;flex-direction:column;position:relative}
+  border-radius:11px;overflow:hidden;cursor:pointer;position:relative;
+  transition:border-color .15s,transform .1s;display:flex;flex-direction:column}
 .board-card:hover{border-color:var(--yellow);transform:scale(1.02)}
 .board-card:active{transform:scale(.98)}
+.board-card.long-pressing{border-color:var(--yellow);transform:scale(1.03);box-shadow:0 0 0 2px var(--yellow)}
 .bc-thumb{width:100%;aspect-ratio:16/10;background:#f7f9fd;display:block}
-.bc-info{padding:10px 12px 12px;flex:1;display:flex;flex-direction:column;gap:3px}
-.bc-name{font-size:13px;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-info{padding:9px 11px 11px;flex:1;display:flex;flex-direction:column;gap:2px}
+.bc-name{font-size:12px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bc-date{font-size:10px;color:rgba(255,255,255,.4)}
-.bc-del{position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:50%;
-  background:rgba(192,57,43,.85);color:white;border:none;font-size:14px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .15s;line-height:1}
-.board-card:hover .bc-del{opacity:1}
 
-/* APP */
+/* Context menu (long-press) */
+#ctx-menu{display:none;position:fixed;z-index:300;background:var(--navydim);
+  border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:180px}
+#ctx-menu.active{display:block}
+.ctx-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
+  font-size:13px;font-weight:500;color:white;cursor:pointer;transition:background .12s}
+.ctx-item:hover{background:rgba(255,255,255,.1)}
+.ctx-item.danger{color:#e74c3c}
+.ctx-item.danger:hover{background:rgba(231,76,60,.15)}
+.ctx-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+
+/* Move sheet */
+#move-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(22,42,78,.75);
+  align-items:flex-end;justify-content:center}
+#move-sheet.active{display:flex}
+#move-box{background:var(--navydim);border-radius:16px 16px 0 0;width:100%;max-width:480px;
+  max-height:70vh;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);
+  border-top:1px solid rgba(255,255,255,.12)}
+#move-box-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+#move-box-head h3{font-size:14px;font-weight:700;color:white}
+#move-close{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.1);border:none;
+  color:white;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#move-list{flex:1;overflow-y:auto;padding:8px}
+.move-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:8px;
+  cursor:pointer;font-size:13px;font-weight:500;color:white;transition:background .12s}
+.move-item:hover{background:rgba(255,255,255,.1)}
+.move-item.selected{background:rgba(255,196,37,.15);color:var(--yellow)}
+.move-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+
+/* Folder action sheet */
+#folder-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(22,42,78,.75);
+  align-items:center;justify-content:center}
+#folder-sheet.active{display:flex}
+#folder-box{background:var(--navydim);border-radius:14px;width:280px;padding:20px;
+  display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,.12)}
+#folder-box h3{font-size:14px;font-weight:700;color:white;text-align:center}
+#folder-name-input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;padding:10px 14px;color:white;font-size:14px;font-family:'Inter',sans-serif;
+  width:100%;outline:none}
+#folder-name-input:focus{border-color:var(--yellow)}
+#folder-name-input::placeholder{color:rgba(255,255,255,.3)}
+.folder-box-btns{display:flex;gap:8px}
+.folder-box-btns button{flex:1;height:36px;border-radius:8px;border:none;font-family:'Inter',sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;transition:opacity .13s}
+.folder-box-btns button:hover{opacity:.85}
+#folder-cancel-btn{background:rgba(255,255,255,.1);color:white}
+#folder-ok-btn{background:var(--yellow);color:var(--navy)}
+
+/* Empty state */
+#home-empty{display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:60px 20px;color:rgba(255,255,255,.3);text-align:center}
+#home-empty p{font-size:14px;font-weight:500}
+#home-empty span{font-size:12px;opacity:.7}
+
+/* Warning dialog */
+#warn-dialog{display:none;position:fixed;inset:0;z-index:350;background:rgba(22,42,78,.8);
+  align-items:center;justify-content:center}
+#warn-dialog.active{display:flex}
+#warn-box{background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;
+  padding:24px;max-width:280px;text-align:center;display:flex;flex-direction:column;gap:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#warn-box h3{font-size:15px;font-weight:700;color:white}
+#warn-box p{font-size:12px;color:rgba(255,255,255,.6);line-height:1.5}
+.warn-btns{display:flex;gap:8px}
+.warn-btns button{flex:1;height:34px;border-radius:7px;border:none;font-family:'Inter',sans-serif;
+  font-size:12px;font-weight:600;cursor:pointer}
+#warn-cancel{background:rgba(255,255,255,.1);color:white}
+#warn-cancel:hover{background:rgba(255,255,255,.2)}
+#warn-ok{background:#c0392b;color:white}
+#warn-ok:hover{background:#a93226}
+
+/* ── APP ── */
 #app{position:fixed;inset:0;display:none;flex-direction:column}
 #topbar{height:44px;flex-shrink:0;background:var(--navy);display:flex;align-items:center;
   padding:0 10px;gap:7px;box-shadow:0 2px 12px rgba(0,0,0,.4);z-index:100;position:relative}
@@ -78,7 +171,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg-colour);transition:background .3s}
 #main-canvas{position:absolute;inset:0;touch-action:none}
 
-/* PAGE STRIP */
 #page-strip{height:52px;flex-shrink:0;background:var(--navydim);border-top:1px solid rgba(255,255,255,.1);
   display:flex;align-items:center;padding:0 12px;gap:8px;overflow-x:auto;overflow-y:hidden;
   -webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -124,12 +216,10 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   display:flex;align-items:center;justify-content:center;transition:all .13s;cursor:pointer}
 .pact:hover{background:rgba(255,255,255,.2);color:white}
 .pact.danger:hover,.pact.erase-on{background:#c0392b;color:white;border-color:#c0392b}
-/* Background colour swatches */
 .bgsw{width:18px;height:18px;border-radius:4px;border:2px solid transparent;cursor:pointer;transition:transform .12s;flex-shrink:0}
 .bgsw:hover{transform:scale(1.2)}
 .bgsw.active{border-color:white;box-shadow:0 0 0 1px rgba(255,255,255,.4)}
 
-/* FABs */
 #ur-wrap{position:fixed;right:16px;bottom:68px;z-index:90;display:flex;flex-direction:column;gap:8px}
 #snap-fab,#undo-fab,#redo-fab{width:40px;height:40px;border-radius:50%;background:var(--navylt);
   border:1.5px solid rgba(255,255,255,.25);color:white;display:flex;align-items:center;justify-content:center;
@@ -138,77 +228,79 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #undo-fab:disabled,#redo-fab:disabled{opacity:.3;cursor:default}
 #snap-fab.active{background:var(--yellow);color:var(--navy);border-color:var(--yellow)}
 
-/* ZOOM */
 #zoom-pill{position:absolute;bottom:16px;right:16px;background:rgba(31,56,100,.8);
   border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 10px;
   font-size:10px;font-weight:600;color:rgba(255,255,255,.7);backdrop-filter:blur(4px);
   pointer-events:none;opacity:0;transition:opacity .3s}
 #zoom-pill.visible{opacity:1}
 
-/* OVERLAYS */
-#pdf-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(22,42,78,.88);
-  align-items:center;justify-content:center;flex-direction:column;gap:14px;
-  color:white;font-size:14px;font-weight:600}
+#pdf-overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(22,42,78,.88);
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;color:white;font-size:14px;font-weight:600}
 #pdf-overlay.active{display:flex}
-#pdf-spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.2);
-  border-top-color:var(--yellow);border-radius:50%;animation:spin .7s linear infinite}
+#pdf-spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--yellow);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-#del-confirm{display:none;position:fixed;inset:0;z-index:190;background:rgba(22,42,78,.7);
-  align-items:center;justify-content:center}
-#del-confirm.active{display:flex}
-#del-box{background:var(--navydim);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;
-  padding:24px 28px;display:flex;flex-direction:column;gap:16px;color:white;
-  max-width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5)}
-#del-box h3{font-size:15px;font-weight:700}
-#del-box p{font-size:12px;color:rgba(255,255,255,.6)}
+
+#page-del-confirm{display:none;position:fixed;inset:0;z-index:350;background:rgba(22,42,78,.7);align-items:center;justify-content:center}
+#page-del-confirm.active{display:flex}
+#page-del-box{background:var(--navydim);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;
+  padding:24px 28px;display:flex;flex-direction:column;gap:16px;color:white;max-width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#page-del-box h3{font-size:15px;font-weight:700}
+#page-del-box p{font-size:12px;color:rgba(255,255,255,.6)}
 .del-btns{display:flex;gap:8px}
 .del-btns button{flex:1;height:34px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
-#del-cancel{background:rgba(255,255,255,.1);color:white}
-#del-cancel:hover{background:rgba(255,255,255,.2)}
-#del-ok{background:#c0392b;color:white}
-#del-ok:hover{background:#a93226}
-#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
-  background:var(--navy);color:white;font-size:12px;font-weight:600;
-  padding:8px 16px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,.3);
-  opacity:0;transition:all .25s;pointer-events:none;z-index:300;white-space:nowrap}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#pdel-cancel{background:rgba(255,255,255,.1);color:white}
+#pdel-cancel:hover{background:rgba(255,255,255,.2)}
+#pdel-ok{background:#c0392b;color:white}
 
-/* Hidden file input for image insert */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--navy);color:white;font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #img-input{display:none}
 </style>
 </head>
 <body>
 
-<!-- HOME -->
+<!-- ═══ HOME ═══ -->
 <div id="home">
   <div id="home-bar">
     <div class="h-badge">LA</div>
-    <h1>LA Canvas</h1>
-    <button id="home-new-btn" onclick="newBoard()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      New Board
-    </button>
+    <div id="home-back" onclick="navUp()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div id="home-breadcrumb">
+      <h1 id="home-title">LA Canvas</h1>
+      <div class="bc-sub" id="home-sub" style="display:none"></div>
+    </div>
+    <div class="home-bar-btns" id="home-bar-btns">
+      <button class="h-btn secondary" id="new-folder-btn" onclick="showNewFolder()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Folder
+      </button>
+      <button class="h-btn primary" id="new-board-btn" onclick="newBoard()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Board
+      </button>
+    </div>
   </div>
   <div id="home-body">
-    <div id="home-empty" style="display:none">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
-      </svg>
-      <p>No boards yet</p>
-      <span>Tap New Board to get started</span>
+    <div id="home-empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <p id="home-empty-msg">Nothing here yet</p>
+      <span>Tap New Board or Folder to get started</span>
     </div>
-    <div id="board-grid"></div>
+    <div id="home-content"></div>
   </div>
 </div>
 
-<!-- APP -->
+<!-- ═══ APP ═══ -->
 <div id="app">
   <div id="topbar">
     <button class="tbtn" onclick="goHome()" title="All boards" style="min-width:26px;width:26px;padding:0">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div class="badge">LA</div>
-    <button class="tbtn" id="title-btn" onclick="editTitle()" title="Rename" style="min-width:26px;width:26px;padding:0">
+    <button class="tbtn" onclick="editTitle()" title="Rename" style="min-width:26px;width:26px;padding:0">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -224,7 +316,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
         <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
       </svg>
     </button>
-    <!-- Image insert button -->
     <button class="tbtn" onclick="document.getElementById('img-input').click()" title="Insert image">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -234,17 +325,15 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <button class="tbtn" onclick="exportPDF()" title="Export PDF">&#8595; PDF</button>
     <div id="prog-wrap"><div id="prog-fill"></div></div>
   </div>
-
   <div id="canvas-wrap">
     <canvas id="main-canvas"></canvas>
     <div id="zoom-pill">100%</div>
   </div>
   <div id="page-strip">
-    <button id="add-page-btn" onclick="addPage()" title="New page">+</button>
+    <button id="add-page-btn" onclick="addPage()">+</button>
   </div>
 </div>
 
-<!-- Hidden file input -->
 <input type="file" id="img-input" accept="image/*">
 
 <!-- PEN UI -->
@@ -256,23 +345,19 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     </svg>
   </div>
   <div id="pen-bar" class="hidden">
-    <!-- Pen colours -->
     <div class="csw active" style="background:#1a1a2e" data-c="#1a1a2e"></div>
     <div class="csw" style="background:#c0392b" data-c="#c0392b"></div>
     <div class="csw" style="background:#1565c0" data-c="#1565c0"></div>
     <div class="csw" style="background:#2e7d32" data-c="#2e7d32"></div>
     <div class="csw" style="background:#FFC425" data-c="#FFC425"></div>
     <div class="pb-sep"></div>
-    <!-- Pen sizes -->
     <button class="psz active" data-s="3"><svg width="8" height="8"><circle cx="4" cy="4" r="2" fill="currentColor"/></svg></button>
     <button class="psz" data-s="6"><svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg></button>
     <button class="psz" data-s="12"><svg width="13" height="13"><circle cx="6.5" cy="6.5" r="5.5" fill="currentColor"/></svg></button>
     <div class="pb-sep"></div>
-    <!-- Erase / Clear -->
     <button class="pact" id="erase-btn">&#9003;</button>
     <button class="pact danger" id="clear-btn">&#10005;</button>
     <div class="pb-sep"></div>
-    <!-- Background colour swatches -->
     <div class="bgsw active" style="background:#f7f9fd" data-bg="#f7f9fd" title="Default"></div>
     <div class="bgsw" style="background:#fffde7" data-bg="#fffde7" title="Pale yellow"></div>
     <div class="bgsw" style="background:#e8f4f8" data-bg="#e8f4f8" title="Pale blue"></div>
@@ -281,95 +366,549 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- FABs -->
 <div id="ur-wrap" style="display:none">
   <button id="snap-fab" onclick="toggleSnap()" title="Shape recognition">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 20 2 20"/></svg>
   </button>
   <button id="undo-fab" onclick="undo()" title="Undo">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
-    </svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
   </button>
   <button id="redo-fab" onclick="redo()" title="Redo">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>
-    </svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
   </button>
 </div>
 
 <!-- OVERLAYS -->
 <div id="pdf-overlay"><div id="pdf-spinner"></div><span id="pdf-status">Preparing…</span></div>
-<div id="del-confirm">
-  <div id="del-box">
-    <h3 id="del-title">Delete this page?</h3>
-    <p id="del-msg">All annotations on this page will be lost.</p>
+
+<div id="page-del-confirm">
+  <div id="page-del-box">
+    <h3>Delete this page?</h3>
+    <p>All annotations on this page will be lost.</p>
     <div class="del-btns">
-      <button id="del-cancel" onclick="cancelDelete()">Cancel</button>
-      <button id="del-ok" onclick="confirmDelete()">Delete</button>
+      <button id="pdel-cancel" onclick="document.getElementById('page-del-confirm').classList.remove('active');pageDeleteTarget=null">Cancel</button>
+      <button id="pdel-ok" onclick="confirmPageDelete()">Delete</button>
     </div>
   </div>
 </div>
+
+<!-- Context menu (long-press) -->
+<div id="ctx-menu">
+  <div class="ctx-item" id="ctx-move" onclick="openMoveSheet()">
+    <span class="ctx-icon">📂</span> Move to folder
+  </div>
+  <div class="ctx-item" id="ctx-rename-board" onclick="renameBoard()">
+    <span class="ctx-icon">✏️</span> Rename
+  </div>
+  <div class="ctx-item danger" id="ctx-delete-board" onclick="promptDeleteBoard()">
+    <span class="ctx-icon">🗑️</span> Delete board
+  </div>
+</div>
+
+<!-- Folder context menu -->
+<div id="folder-ctx">
+  <div class="ctx-item" id="fctx-rename" onclick="renameFolderPrompt()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;color:white;cursor:pointer;transition:background .12s">
+    <span class="ctx-icon">✏️</span> Rename
+  </div>
+  <div class="ctx-item danger" id="fctx-delete" onclick="promptDeleteFolder()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;color:#e74c3c;cursor:pointer;transition:background .12s">
+    <span class="ctx-icon">🗑️</span> Delete folder
+  </div>
+</div>
+
+<!-- Move sheet -->
+<div id="move-sheet">
+  <div id="move-box">
+    <div id="move-box-head">
+      <h3>Move board to…</h3>
+      <button id="move-close" onclick="closeMoveSheet()">×</button>
+    </div>
+    <div id="move-list"></div>
+  </div>
+</div>
+
+<!-- Folder create/rename sheet -->
+<div id="folder-sheet">
+  <div id="folder-box">
+    <h3 id="folder-sheet-title">New Folder</h3>
+    <input id="folder-name-input" type="text" placeholder="Folder name" maxlength="40">
+    <div class="folder-box-btns">
+      <button id="folder-cancel-btn" onclick="closeFolderSheet()">Cancel</button>
+      <button id="folder-ok-btn" onclick="confirmFolderAction()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Warning dialog (non-empty folder delete etc) -->
+<div id="warn-dialog">
+  <div id="warn-box">
+    <h3 id="warn-title">Are you sure?</h3>
+    <p id="warn-msg"></p>
+    <div class="warn-btns">
+      <button id="warn-cancel" onclick="document.getElementById('warn-dialog').classList.remove('active')">Cancel</button>
+      <button id="warn-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 /* ═══════════════════════════════════════════════════════
-   LA CANVAS — images, background colours, pen pressure
+   LA CANVAS — Folder file system
+   DB stores:
+     folders: { id, name, parentId, created }
+              parentId=null → class level
+              parentId=someId → topic level (child of class)
+     boards:  { id, name, folderId, created, updated, thumb, bgColour, pages }
+              folderId=null → Unassigned
 ═══════════════════════════════════════════════════════ */
 
 /* ── INDEXEDDB ── */
-const DB_NAME='la-canvas-db', DB_VERSION=1, STORE='boards';
+const DB_NAME='la-canvas-db', DB_VER=2, BOARDS='boards', FOLDERS='folders';
 let db=null;
+
 function openDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    const req=indexedDB.open(DB_NAME,DB_VER);
     req.onupgradeneeded=e=>{
       const d=e.target.result;
-      if(!d.objectStoreNames.contains(STORE)){
-        const s=d.createObjectStore(STORE,{keyPath:'id'});
+      // Boards store
+      if(!d.objectStoreNames.contains(BOARDS)){
+        const s=d.createObjectStore(BOARDS,{keyPath:'id'});
         s.createIndex('updated','updated',{unique:false});
+        s.createIndex('folderId','folderId',{unique:false});
+      } else {
+        // Add folderId index if upgrading
+        const s=e.target.transaction.objectStore(BOARDS);
+        if(!s.indexNames.contains('folderId')) s.createIndex('folderId','folderId',{unique:false});
+      }
+      // Folders store
+      if(!d.objectStoreNames.contains(FOLDERS)){
+        const s=d.createObjectStore(FOLDERS,{keyPath:'id'});
+        s.createIndex('parentId','parentId',{unique:false});
       }
     };
     req.onsuccess=e=>{db=e.target.result;res(db)};
     req.onerror=()=>rej(req.error);
   });
 }
-const tx=(mode)=>db.transaction(STORE,mode).objectStore(STORE);
-function dbGet(id){return new Promise((r,j)=>{const q=tx('readonly').get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);})}
-function dbPut(rec){return new Promise((r,j)=>{const q=tx('readwrite').put(rec);q.onsuccess=()=>r();q.onerror=()=>j(q.error);})}
-function dbDelete(id){return new Promise((r,j)=>{const q=tx('readwrite').delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error);})}
-function dbGetAll(){return new Promise((r,j)=>{const q=tx('readonly').index('updated').getAll();q.onsuccess=()=>r(q.result.reverse());q.onerror=()=>j(q.error);})}
 
-/* ── BOARD STATE ── */
-let currentBoardId=null, boardCreated=Date.now(), saveTimer=null;
-let bgColour='#f7f9fd'; // per-board background colour
+function stx(store,mode){return db.transaction(store,mode).objectStore(store)}
+function dbGet(store,id){return new Promise((r,j)=>{const q=stx(store,'readonly').get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)})}
+function dbPut(store,rec){return new Promise((r,j)=>{const q=stx(store,'readwrite').put(rec);q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
+function dbDelete(store,id){return new Promise((r,j)=>{const q=stx(store,'readwrite').delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
+function dbGetByIndex(store,index,val){
+  return new Promise((r,j)=>{
+    const q=stx(store,'readonly').index(index).getAll(val);
+    q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);
+  });
+}
+function dbGetAll(store){return new Promise((r,j)=>{const q=stx(store,'readonly').getAll();q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)})}
 
-function generateId(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+
+/* ── NAVIGATION STATE ── */
+// navStack: [] = root, [classId] = inside class folder, [classId, topicId] = topic (boards visible)
+let navStack=[];
+
+function currentFolderId(){
+  // Boards are in topic folders (depth 2). If we're at depth < 2, New Board goes to null (Unassigned)
+  return navStack.length>=2 ? navStack[navStack.length-1] : null;
+}
+
+function currentParentId(){
+  // New folder's parent = current folder (for class folders: null, for topic folders: classId)
+  return navStack.length>0 ? navStack[navStack.length-1] : null;
+}
+
+async function showHome(){
+  if(currentBoardId){clearTimeout(saveTimer);await saveCurrentBoard()}
+  document.getElementById('app').style.display='none';
+  document.getElementById('pen-ui-wrap').style.display='none';
+  document.getElementById('ur-wrap').style.display='none';
+  document.getElementById('home').style.display='flex';
+  currentBoardId=null;
+  navStack=[];
+  await renderHome();
+}
+
+async function navInto(folderId){
+  navStack.push(folderId);
+  await renderHome();
+}
+
+async function navUp(){
+  if(!navStack.length)return;
+  navStack.pop();
+  await renderHome();
+}
+
+async function renderHome(){
+  closeCtxMenu();
+  const content=document.getElementById('home-content');
+  const empty=document.getElementById('home-empty');
+  content.innerHTML='';
+
+  // Update breadcrumb
+  const backBtn=document.getElementById('home-back');
+  const titleEl=document.getElementById('home-title');
+  const subEl=document.getElementById('home-sub');
+
+  if(navStack.length===0){
+    backBtn.style.display='none';
+    titleEl.textContent='LA Canvas';
+    subEl.style.display='none';
+  } else {
+    backBtn.style.display='flex';
+    // Build breadcrumb text
+    const names=await Promise.all(navStack.map(id=>dbGet(FOLDERS,id).then(f=>f?f.name:'?')));
+    titleEl.textContent=names[names.length-1];
+    subEl.style.display=names.length>1?'block':'none';
+    subEl.textContent=names.slice(0,-1).join(' › ');
+  }
+
+  // What to show: if depth<2 show subfolders + (at root) also Unassigned; if depth=2 show boards
+  const depth=navStack.length;
+  const parentId=depth>0?navStack[depth-1]:null;
+
+  // Show/hide new folder button — only available at depth 0 (class) and depth 1 (topic)
+  document.getElementById('new-folder-btn').style.display=depth<2?'flex':'none';
+
+  let hasContent=false;
+
+  if(depth<2){
+    // Show subfolders of current level
+    const folders=await dbGetByIndex(FOLDERS,'parentId',parentId);
+    folders.sort((a,b)=>a.name.localeCompare(b.name));
+
+    if(folders.length){
+      hasContent=true;
+      const label=document.createElement('div');
+      label.className='home-section';
+      label.textContent=depth===0?'Classes':'Topics';
+      content.appendChild(label);
+      const grid=document.createElement('div');grid.className='item-grid';
+      folders.forEach(f=>{
+        const card=buildFolderCard(f);grid.appendChild(card);
+      });
+      content.appendChild(grid);
+    }
+
+    // At root, also show Unassigned boards section
+    if(depth===0){
+      const unassigned=await dbGetByIndex(BOARDS,'folderId',null);
+      unassigned.sort((a,b)=>b.updated-a.updated);
+      if(unassigned.length){
+        hasContent=true;
+        const label=document.createElement('div');
+        label.className='home-section';label.textContent='Unassigned';
+        content.appendChild(label);
+        const grid=document.createElement('div');grid.className='item-grid';
+        unassigned.forEach(b=>{const card=buildBoardCard(b);grid.appendChild(card)});
+        content.appendChild(grid);
+      }
+    }
+  } else {
+    // depth===2: show boards in this topic folder
+    const folderId=navStack[1];
+    const boards=await dbGetByIndex(BOARDS,'folderId',folderId);
+    boards.sort((a,b)=>b.updated-a.updated);
+    if(boards.length){
+      hasContent=true;
+      const grid=document.createElement('div');grid.className='item-grid';
+      boards.forEach(b=>{const card=buildBoardCard(b);grid.appendChild(card)});
+      content.appendChild(grid);
+    }
+  }
+
+  if(!hasContent){
+    empty.style.display='flex';
+    document.getElementById('home-empty-msg').textContent=
+      depth===2?'No boards in this topic':depth===1?'No topics yet':'Nothing here yet';
+  } else {
+    empty.style.display='none';
+  }
+}
+
+/* ── FOLDER CARDS ── */
+function buildFolderCard(folder){
+  const card=document.createElement('div');card.className='folder-card';
+  card.innerHTML=`
+    <div class="folder-icon">${navStack.length===0?'🗂️':'📁'}</div>
+    <div class="folder-info">
+      <div class="folder-name">${escHtml(folder.name)}</div>
+      <div class="folder-count" id="fc-${folder.id}">…</div>
+    </div>`;
+  card.addEventListener('click',()=>navInto(folder.id));
+  // Long press for folder options
+  let lpTimer;
+  card.addEventListener('pointerdown',e=>{
+    lpTimer=setTimeout(()=>{e.preventDefault();showFolderCtx(folder,e)},600);
+  },{passive:true});
+  card.addEventListener('pointerup',()=>clearTimeout(lpTimer));
+  card.addEventListener('pointermove',()=>clearTimeout(lpTimer));
+  // Async count
+  countFolderContents(folder.id).then(n=>{
+    const el=document.getElementById('fc-'+folder.id);
+    if(el)el.textContent=n===0?'Empty':n===1?'1 item':`${n} items`;
+  });
+  return card;
+}
+
+async function countFolderContents(folderId){
+  // Count subfolders + boards
+  const [subs,boards]=await Promise.all([
+    dbGetByIndex(FOLDERS,'parentId',folderId),
+    dbGetByIndex(BOARDS,'folderId',folderId)
+  ]);
+  return subs.length+boards.length;
+}
+
+/* ── BOARD CARDS ── */
+function buildBoardCard(board){
+  const card=document.createElement('div');card.className='board-card';
+  const thumb=document.createElement('canvas');thumb.className='bc-thumb';thumb.width=320;thumb.height=200;
+  if(board.thumb){const im=new Image();im.onload=()=>thumb.getContext('2d').drawImage(im,0,0,320,200);im.src=board.thumb}
+  const info=document.createElement('div');info.className='bc-info';
+  const nm=document.createElement('div');nm.className='bc-name';nm.textContent=board.name||'Untitled Board';
+  const dt=document.createElement('div');dt.className='bc-date';dt.textContent=formatDate(board.updated);
+  info.appendChild(nm);info.appendChild(dt);
+  card.appendChild(thumb);card.appendChild(info);
+  card.addEventListener('click',()=>openBoard(board.id));
+  // Long press for board options
+  let lpTimer,isLP=false;
+  card.addEventListener('pointerdown',e=>{
+    isLP=false;
+    lpTimer=setTimeout(()=>{isLP=true;card.classList.add('long-pressing');showBoardCtx(board,e)},600);
+  },{passive:true});
+  card.addEventListener('pointerup',()=>{clearTimeout(lpTimer);setTimeout(()=>card.classList.remove('long-pressing'),200)});
+  card.addEventListener('pointermove',()=>clearTimeout(lpTimer));
+  card.addEventListener('click',e=>{if(isLP){e.stopPropagation();isLP=false}});
+  return card;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function formatDate(ts){
+  if(!ts)return'';const d=new Date(ts),now=new Date(),dm=now-d;
+  const mi=Math.floor(dm/60000),hr=Math.floor(dm/3600000),dy=Math.floor(dm/86400000);
+  if(mi<1)return'Just now';if(mi<60)return mi+'m ago';if(hr<24)return hr+'h ago';
+  if(dy<7)return dy+'d ago';return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+
+/* ── CONTEXT MENUS ── */
+let ctxTargetBoard=null,ctxTargetFolder=null;
+
+function showBoardCtx(board,e){
+  ctxTargetBoard=board;
+  const menu=document.getElementById('ctx-menu');
+  menu.style.cssText=`display:block;background:var(--navydim);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:180px;position:fixed;z-index:300;`;
+  positionMenu(menu,e.clientX,e.clientY);
+  menu.classList.add('active');
+  // Close on outside tap
+  setTimeout(()=>document.addEventListener('pointerdown',closeCtxOnOutside,{once:true}),100);
+}
+
+function showFolderCtx(folder,e){
+  ctxTargetFolder=folder;
+  const menu=document.getElementById('folder-ctx');
+  menu.style.cssText=`display:block;background:var(--navydim);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:160px;position:fixed;z-index:300;`;
+  positionMenu(menu,e.clientX,e.clientY);
+  setTimeout(()=>document.addEventListener('pointerdown',closeCtxOnOutside,{once:true}),100);
+}
+
+function positionMenu(menu,x,y){
+  // Position near tap, keep on screen
+  menu.style.left=x+'px';menu.style.top=y+'px';
+  requestAnimationFrame(()=>{
+    const r=menu.getBoundingClientRect();
+    if(r.right>window.innerWidth)menu.style.left=(x-r.width)+'px';
+    if(r.bottom>window.innerHeight)menu.style.top=(y-r.height)+'px';
+  });
+}
+
+function closeCtxMenu(){
+  document.getElementById('ctx-menu').style.display='none';
+  document.getElementById('folder-ctx').style.display='none';
+  ctxTargetBoard=null;ctxTargetFolder=null;
+}
+function closeCtxOnOutside(e){
+  const menus=['ctx-menu','folder-ctx'];
+  if(!menus.some(id=>document.getElementById(id).contains(e.target)))closeCtxMenu();
+}
+
+/* ── BOARD CONTEXT ACTIONS ── */
+function renameBoard(){
+  if(!ctxTargetBoard)return;closeCtxMenu();
+  const name=prompt('Board name:',ctxTargetBoard.name||'Untitled Board');
+  if(name&&name.trim()){
+    ctxTargetBoard.name=name.trim();
+    dbPut(BOARDS,{...ctxTargetBoard}).then(()=>renderHome());
+  }
+}
+
+function promptDeleteBoard(){
+  if(!ctxTargetBoard)return;const board=ctxTargetBoard;closeCtxMenu();
+  showWarn('Delete "'+escHtml(board.name)+'"?','This board and all its content will be permanently deleted.',()=>{
+    dbDelete(BOARDS,board.id).then(()=>{renderHome();showToast('Board deleted')});
+  });
+}
+
+/* ── MOVE SHEET ── */
+let movingBoard=null;
+async function openMoveSheet(){
+  movingBoard=ctxTargetBoard;closeCtxMenu();
+  const list=document.getElementById('move-list');list.innerHTML='';
+  // Option: Unassigned
+  const ua=buildMoveItem('📥','Unassigned',null,movingBoard.folderId===null);
+  list.appendChild(ua);
+  // Build tree: class folders → topic folders
+  const classFolders=await dbGetByIndex(FOLDERS,'parentId',null);
+  classFolders.sort((a,b)=>a.name.localeCompare(b.name));
+  for(const cf of classFolders){
+    const cItem=buildMoveItem('🗂️',cf.name,null,false,true);
+    list.appendChild(cItem);
+    const topics=await dbGetByIndex(FOLDERS,'parentId',cf.id);
+    topics.sort((a,b)=>a.name.localeCompare(b.name));
+    topics.forEach(t=>{
+      const tItem=buildMoveItem('📁',t.name,t.id,movingBoard.folderId===t.id,false,true);
+      list.appendChild(tItem);
+    });
+  }
+  document.getElementById('move-sheet').classList.add('active');
+}
+
+function buildMoveItem(icon,name,folderId,selected,isHeader=false,indented=false){
+  const item=document.createElement('div');item.className='move-item'+(selected?' selected':'');
+  if(isHeader){item.style.opacity='.6';item.style.cursor='default';item.style.pointerEvents='none'}
+  if(indented)item.style.paddingLeft='28px';
+  item.innerHTML=`<span class="move-icon">${icon}</span>${escHtml(name)}`;
+  if(!isHeader){
+    item.addEventListener('click',()=>{
+      movingBoard.folderId=folderId;
+      dbPut(BOARDS,{...movingBoard}).then(()=>{closeMoveSheet();renderHome();showToast('Board moved')});
+    });
+  }
+  return item;
+}
+
+function closeMoveSheet(){document.getElementById('move-sheet').classList.remove('active');movingBoard=null}
+
+/* ── FOLDER ACTIONS ── */
+let folderSheetMode='create'; // 'create' or 'rename'
+
+function showNewFolder(){
+  folderSheetMode='create';
+  document.getElementById('folder-sheet-title').textContent='New Folder';
+  document.getElementById('folder-ok-btn').textContent='Create';
+  document.getElementById('folder-name-input').value='';
+  document.getElementById('folder-sheet').classList.add('active');
+  setTimeout(()=>document.getElementById('folder-name-input').focus(),100);
+}
+
+function renameFolderPrompt(){
+  if(!ctxTargetFolder)return;closeCtxMenu();
+  folderSheetMode='rename';
+  document.getElementById('folder-sheet-title').textContent='Rename Folder';
+  document.getElementById('folder-ok-btn').textContent='Rename';
+  document.getElementById('folder-name-input').value=ctxTargetFolder.name;
+  document.getElementById('folder-sheet').classList.add('active');
+  setTimeout(()=>document.getElementById('folder-name-input').focus(),100);
+}
+
+async function confirmFolderAction(){
+  const name=document.getElementById('folder-name-input').value.trim();
+  if(!name){showToast('Please enter a name');return}
+  if(folderSheetMode==='create'){
+    const parentId=currentParentId();
+    await dbPut(FOLDERS,{id:genId(),name,parentId,created:Date.now()});
+    showToast('Folder created');
+  } else {
+    if(!ctxTargetFolder)return;
+    ctxTargetFolder.name=name;
+    await dbPut(FOLDERS,{...ctxTargetFolder});
+    showToast('Folder renamed');
+  }
+  closeFolderSheet();renderHome();
+}
+
+function closeFolderSheet(){
+  document.getElementById('folder-sheet').classList.remove('active');
+  document.getElementById('folder-name-input').value='';
+  ctxTargetFolder=null;
+}
+
+document.getElementById('folder-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmFolderAction()});
+
+async function promptDeleteFolder(){
+  if(!ctxTargetFolder)return;const folder=ctxTargetFolder;closeCtxMenu();
+  // Check if folder has contents
+  const[subs,boards]=await Promise.all([
+    dbGetByIndex(FOLDERS,'parentId',folder.id),
+    dbGetByIndex(BOARDS,'folderId',folder.id)
+  ]);
+  const count=subs.length+boards.length;
+  if(count>0){
+    showWarn(
+      'Folder is not empty',
+      `"${escHtml(folder.name)}" contains ${count} item${count!==1?'s':''}. Delete the contents first before deleting this folder.`,
+      null // no confirm action — just informational
+    );
+    document.getElementById('warn-ok').style.display='none';
+    document.getElementById('warn-cancel').textContent='OK';
+    return;
+  }
+  showWarn('Delete "'+escHtml(folder.name)+'"?','This folder will be permanently deleted.',async()=>{
+    await dbDelete(FOLDERS,folder.id);
+    // If we were inside this folder, pop nav
+    if(navStack.includes(folder.id)){
+      while(navStack.length&&navStack[navStack.length-1]!==folder.id)navStack.pop();
+      navStack.pop();
+    }
+    renderHome();showToast('Folder deleted');
+  });
+  document.getElementById('warn-ok').style.display='';
+  document.getElementById('warn-cancel').textContent='Cancel';
+}
+
+/* ── WARN DIALOG ── */
+let warnCallback=null;
+function showWarn(title,msg,cb){
+  warnCallback=cb;
+  document.getElementById('warn-title').textContent=title;
+  document.getElementById('warn-msg').textContent=msg;
+  document.getElementById('warn-ok').onclick=()=>{document.getElementById('warn-dialog').classList.remove('active');if(warnCallback)warnCallback()};
+  document.getElementById('warn-dialog').classList.add('active');
+}
+
+/* ── BOARD OPERATIONS ── */
+let currentBoardId=null,boardCreated=Date.now(),saveTimer=null;
+let bgColour='#f7f9fd';
+
 function scheduleAutoSave(){clearTimeout(saveTimer);setSaveIndicator('saving');saveTimer=setTimeout(saveCurrentBoard,1500)}
-function setSaveIndicator(s){const el=document.getElementById('save-indicator');if(!el)return;el.className=s}
+function setSaveIndicator(s){const el=document.getElementById('save-indicator');if(el)el.className=s}
 
 async function saveCurrentBoard(){
   if(!currentBoardId)return;
   const title=document.getElementById('app-title').textContent;
   const thumb=generateBoardThumb();
-  await dbPut({
-    id:currentBoardId, name:title,
-    created:boardCreated, updated:Date.now(),
-    thumb, bgColour,
-    // Save pages as array of {strokes, images}
-    pages: pageData.map(pg=>({
-      strokes: pg.strokes.map(s=>({col:s.col,size:s.size,erase:s.erase,pts:s.pts})),
-      images:  pg.images.map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
+  // Get the current folderId from the stored record
+  const existing=await dbGet(BOARDS,currentBoardId);
+  await dbPut(BOARDS,{
+    id:currentBoardId,name:title,
+    created:boardCreated,updated:Date.now(),
+    folderId:existing?existing.folderId:null,
+    thumb,bgColour,
+    pages:pageData.map(pg=>({
+      strokes:pg.strokes.map(s=>({col:s.col,size:s.size,erase:s.erase,pts:s.pts})),
+      images:pg.images.map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
     }))
   });
   setSaveIndicator('saved');
 }
 
 function generateBoardThumb(){
-  const W=320,H=200;
-  const tc=document.createElement('canvas');tc.width=W;tc.height=H;
-  const tctx=tc.getContext('2d');
-  tctx.fillStyle=bgColour;tctx.fillRect(0,0,W,H);
+  const W=320,H=200,tc=document.createElement('canvas');tc.width=W;tc.height=H;
+  const tctx=tc.getContext('2d');tctx.fillStyle=bgColour;tctx.fillRect(0,0,W,H);
   const allStrokes=pageData.flatMap(pg=>pg.strokes);
   if(!allStrokes.length)return tc.toDataURL();
   let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
@@ -377,7 +916,7 @@ function generateBoardThumb(){
   if(mnX===Infinity)return tc.toDataURL();
   const pad=12,bW=mxX-mnX||1,bH=mxY-mnY||1;
   const sc=Math.min((W-pad*2)/bW,(H-pad*2)/bH)*.9;
-  const ox=pad+(W-pad*2-bW*sc)/2-mnX*sc, oy=pad+(H-pad*2-bH*sc)/2-mnY*sc;
+  const ox=pad+(W-pad*2-bW*sc)/2-mnX*sc,oy=pad+(H-pad*2-bH*sc)/2-mnY*sc;
   tctx.fillStyle='rgba(31,56,100,0.1)';
   for(let x=0;x<W;x+=10)for(let y=0;y<H;y+=10){tctx.beginPath();tctx.arc(x,y,.6,0,Math.PI*2);tctx.fill()}
   for(const s of allStrokes){
@@ -390,139 +929,62 @@ function generateBoardThumb(){
   return tc.toDataURL();
 }
 
-/* ── HOME SCREEN ── */
-async function showHome(){
-  if(currentBoardId){clearTimeout(saveTimer);await saveCurrentBoard()}
-  document.getElementById('app').style.display='none';
-  document.getElementById('pen-ui-wrap').style.display='none';
-  document.getElementById('ur-wrap').style.display='none';
-  document.getElementById('home').style.display='flex';
-  currentBoardId=null;
-  await renderHomeGrid();
-}
-
-async function renderHomeGrid(){
-  const boards=await dbGetAll();
-  const grid=document.getElementById('board-grid');
-  const empty=document.getElementById('home-empty');
-  grid.innerHTML='';
-  if(!boards.length){empty.style.display='flex';return}
-  empty.style.display='none';
-  boards.forEach(board=>{
-    const card=document.createElement('div');card.className='board-card';
-    const img=document.createElement('canvas');img.className='bc-thumb';img.width=320;img.height=200;
-    if(board.thumb){const im=new Image();im.onload=()=>img.getContext('2d').drawImage(im,0,0,320,200);im.src=board.thumb}
-    const info=document.createElement('div');info.className='bc-info';
-    const nm=document.createElement('div');nm.className='bc-name';nm.textContent=board.name||'Untitled Board';
-    const dt=document.createElement('div');dt.className='bc-date';dt.textContent=formatDate(board.updated);
-    info.appendChild(nm);info.appendChild(dt);
-    const del=document.createElement('button');del.className='bc-del';del.textContent='×';
-    del.addEventListener('pointerup',e=>{e.stopPropagation();deleteBoard(board.id,board.name||'Untitled Board')});
-    card.appendChild(img);card.appendChild(info);card.appendChild(del);
-    card.addEventListener('click',()=>openBoard(board.id));
-    grid.appendChild(card);
-  });
-}
-
-function formatDate(ts){
-  if(!ts)return'';
-  const d=new Date(ts),now=new Date(),dm=now-d;
-  const mi=Math.floor(dm/60000),hr=Math.floor(dm/3600000),dy=Math.floor(dm/86400000);
-  if(mi<1)return'Just now';if(mi<60)return mi+'m ago';if(hr<24)return hr+'h ago';
-  if(dy<7)return dy+'d ago';return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-}
-
 async function newBoard(){
-  const id=generateId();boardCreated=Date.now();
-  const rec={id,name:'Untitled Board',created:boardCreated,updated:boardCreated,thumb:null,bgColour:'#f7f9fd',pages:[{strokes:[],images:[]}]};
-  await dbPut(rec);loadBoardIntoCanvas(rec);
+  const id=genId();boardCreated=Date.now();
+  const folderId=currentFolderId(); // null if not in a topic folder
+  await dbPut(BOARDS,{id,name:'Untitled Board',folderId,created:boardCreated,updated:boardCreated,thumb:null,bgColour:'#f7f9fd',pages:[{strokes:[],images:[]}]});
+  const board=await dbGet(BOARDS,id);
+  loadBoardIntoCanvas(board);
 }
 
 async function openBoard(id){
-  const board=await dbGet(id);if(!board)return;loadBoardIntoCanvas(board);
+  const board=await dbGet(BOARDS,id);if(!board)return;loadBoardIntoCanvas(board);
 }
 
 function loadBoardIntoCanvas(board){
   currentBoardId=board.id;boardCreated=board.created||Date.now();
-
-  // Restore background colour
-  bgColour=board.bgColour||'#f7f9fd';
-  applyBgColour(bgColour,false);
-
-  // Restore pages — support old format (array of stroke arrays) and new format ({strokes,images})
+  bgColour=board.bgColour||'#f7f9fd';applyBgColour(bgColour,false);
   const raw=board.pages||[{strokes:[],images:[]}];
   pageData=raw.map(pg=>{
-    if(Array.isArray(pg)){
-      // Old format: pg is a stroke array
-      return {strokes:pg.map(s=>({...s})), images:[]};
-    }
-    return {
-      strokes:(pg.strokes||[]).map(s=>({...s})),
-      images: (pg.images||[]).map(img=>({...img,_el:null}))
-    };
+    if(Array.isArray(pg))return{strokes:pg.map(s=>({...s})),images:[]};
+    return{strokes:(pg.strokes||[]).map(s=>({...s})),images:(pg.images||[]).map(img=>({...img,_el:null}))};
   });
   if(!pageData.length)pageData=[{strokes:[],images:[]}];
-  // Pre-load image elements
   pageData.forEach(pg=>pg.images.forEach(img=>loadImgEl(img)));
-
-  undoStacks=pageData.map(()=>[]);
-  redoStacks=pageData.map(()=>[]);
-  curPage=0;
-
+  undoStacks=pageData.map(()=>[]);redoStacks=pageData.map(()=>[]);curPage=0;
   const title=board.name||'Untitled Board';
-  document.getElementById('app-title').textContent=title;
-  document.title=title+' — LA Canvas';
+  document.getElementById('app-title').textContent=title;document.title=title+' — LA Canvas';
   scale=1;offsetX=0;offsetY=0;
-
   document.getElementById('home').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('pen-ui-wrap').style.display='flex';
   document.getElementById('ur-wrap').style.display='flex';
-
   resizeCanvas();buildPageStrip();syncUndoRedo();setSaveIndicator('saved');render();
 }
 
 function goHome(){showHome()}
 
-/* ── BOARD DELETE ── */
-let deleteBoardId=null,deleteBoardName=null;
-function deleteBoard(id,name){
-  deleteBoardId=id;deleteBoardName=name;
-  document.getElementById('del-title').textContent='Delete "'+name+'"?';
-  document.getElementById('del-msg').textContent='This board and all its annotations will be permanently deleted.';
-  document.getElementById('del-confirm').classList.add('active');
-}
-
 /* ── CANVAS ENGINE ── */
 const canvas=document.getElementById('main-canvas');
 const ctx=canvas?canvas.getContext('2d'):null;
 let drawing=false,eraseOn=false,penCol='#1a1a2e',penSz=3;
-
-// pageData: array of {strokes:[], images:[]}
-// stroke: {col, size, erase, pts:[{x,y,p}]}  — p = pressure 0-1
-// image:  {x, y, w, h, src, _el}             — x,y,w,h in virtual coords
-let pageData=[{strokes:[],images:[]}];
-let curPage=0,curStroke=null;
+let pageData=[{strokes:[],images:[]}],curPage=0,curStroke=null;
 let undoStacks=[[]],redoStacks=[[]];
 let scale=1,offsetX=0,offsetY=0;
 let lastTouchDist=null,lastTouchMid=null;
 let panning=false,panStart=null,panOffStart=null;
 let activePointers={},zoomTimer=null;
 let snapOn=false,_paletteOn=false;
-
 const DOT_SPACING=22,DOT_RADIUS=1.2;
 
 function toVirt(sx,sy){return{x:(sx-offsetX)/scale,y:(sy-offsetY)/scale}}
 function toScreen(vx,vy){return{x:vx*scale+offsetX,y:vy*scale+offsetY}}
-
-// Convenience accessors for current page
 function strokes(){return pageData[curPage].strokes}
 function images(){return pageData[curPage].images}
 
 function resizeCanvas(){
   if(!canvas||!ctx)return;
-  const dpr=window.devicePixelRatio||1;
-  const w=canvas.parentElement.offsetWidth,h=canvas.parentElement.offsetHeight;
+  const dpr=window.devicePixelRatio||1,w=canvas.parentElement.offsetWidth,h=canvas.parentElement.offsetHeight;
   canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
   canvas.style.width=w+'px';canvas.style.height=h+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);render();
@@ -531,73 +993,44 @@ window.addEventListener('resize',resizeCanvas);
 
 function render(){
   if(!ctx)return;
-  const dpr=window.devicePixelRatio||1;
-  const W=canvas.parentElement.offsetWidth,H=canvas.parentElement.offsetHeight;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
-
-  // Background fill (matches canvas-wrap CSS but also fills canvas for PDF consistency)
+  const dpr=window.devicePixelRatio||1,W=canvas.parentElement.offsetWidth,H=canvas.parentElement.offsetHeight;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
   ctx.fillStyle=bgColour;ctx.fillRect(0,0,W,H);
-
-  // Dot paper
   drawDots(W,H);
-
-  // Images (below strokes)
-  for(const img of images()){
-    if(!img._el||!img._el.complete)continue;
-    const s=toScreen(img.x,img.y);
-    ctx.drawImage(img._el,s.x,s.y,img.w*scale,img.h*scale);
-  }
-
-  // Strokes
+  for(const img of images()){if(!img._el||!img._el.complete)continue;const s=toScreen(img.x,img.y);ctx.drawImage(img._el,s.x,s.y,img.w*scale,img.h*scale)}
   for(const s of strokes())drawStroke(s);
   if(curStroke&&curStroke.pts.length>1)drawStroke(curStroke);
 }
 
 function drawDots(W,H){
   const sv=toVirt(0,0),ev=toVirt(W,H);
-  const gx0=Math.floor(sv.x/DOT_SPACING)*DOT_SPACING;
-  const gy0=Math.floor(sv.y/DOT_SPACING)*DOT_SPACING;
-  // Dot colour adapts to background
+  const gx0=Math.floor(sv.x/DOT_SPACING)*DOT_SPACING,gy0=Math.floor(sv.y/DOT_SPACING)*DOT_SPACING;
   ctx.fillStyle='rgba(31,56,100,0.13)';
-  for(let vx=gx0;vx<ev.x+DOT_SPACING;vx+=DOT_SPACING){
-    for(let vy=gy0;vy<ev.y+DOT_SPACING;vy+=DOT_SPACING){
-      const s=toScreen(vx,vy);ctx.beginPath();ctx.arc(s.x,s.y,DOT_RADIUS*scale,0,Math.PI*2);ctx.fill();
-    }
-  }
+  for(let vx=gx0;vx<ev.x+DOT_SPACING;vx+=DOT_SPACING)
+    for(let vy=gy0;vy<ev.y+DOT_SPACING;vy+=DOT_SPACING){const s=toScreen(vx,vy);ctx.beginPath();ctx.arc(s.x,s.y,DOT_RADIUS*scale,0,Math.PI*2);ctx.fill()}
 }
 
 function drawStroke(s){
   if(s.pts.length<2)return;
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
   if(s.erase){
-    ctx.globalCompositeOperation='destination-out';
-    ctx.strokeStyle='rgba(0,0,0,1)';
-    // Draw eraser as single path at fixed width
-    ctx.lineWidth=s.size*scale*6;
-    ctx.beginPath();
-    const p0=toScreen(s.pts[0].x,s.pts[0].y);ctx.moveTo(p0.x,p0.y);
+    ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='rgba(0,0,0,1)';ctx.lineWidth=s.size*scale*6;
+    ctx.beginPath();const p0=toScreen(s.pts[0].x,s.pts[0].y);ctx.moveTo(p0.x,p0.y);
     for(let i=1;i<s.pts.length;i++){const p=toScreen(s.pts[i].x,s.pts[i].y);ctx.lineTo(p.x,p.y)}
     ctx.stroke();
   } else {
-    ctx.globalCompositeOperation='source-over';
-    ctx.strokeStyle=s.col;
-    // Pressure-sensitive: draw segment by segment varying lineWidth
+    ctx.globalCompositeOperation='source-over';ctx.strokeStyle=s.col;
     for(let i=1;i<s.pts.length;i++){
       const prev=s.pts[i-1],curr=s.pts[i];
-      const pPrev=prev.p!=null?prev.p:0.5;
-      const pCurr=curr.p!=null?curr.p:0.5;
-      const avgP=(pPrev+pCurr)/2;
-      // Width range: 0.4× to 2× base size, smoothed
+      const avgP=((prev.p||.5)+(curr.p||.5))/2;
       const w=s.size*(0.4+avgP*1.6)*scale;
       const a=toScreen(prev.x,prev.y),b=toScreen(curr.x,curr.y);
-      ctx.beginPath();ctx.lineWidth=Math.max(0.5,w);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      ctx.beginPath();ctx.lineWidth=Math.max(.5,w);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
   }
   ctx.restore();
 }
 
-/* ── ZOOM / PAN ── */
 function applyZoom(ns,px,py){
   ns=Math.min(8,Math.max(.1,ns));
   offsetX=px-(px-offsetX)*(ns/scale);offsetY=py-(py-offsetY)*(ns/scale);
@@ -605,12 +1038,10 @@ function applyZoom(ns,px,py){
 }
 function resetView(){scale=1;offsetX=0;offsetY=0;showZoomPill();render()}
 function showZoomPill(){
-  const p=document.getElementById('zoom-pill');
-  p.textContent=Math.round(scale*100)+'%';p.classList.add('visible');
-  clearTimeout(zoomTimer);zoomTimer=setTimeout(()=>p.classList.remove('visible'),1500);
+  const p=document.getElementById('zoom-pill');p.textContent=Math.round(scale*100)+'%';
+  p.classList.add('visible');clearTimeout(zoomTimer);zoomTimer=setTimeout(()=>p.classList.remove('visible'),1500);
 }
 
-/* ── POINTER EVENTS ── */
 function isPenOrMouse(e){return e.pointerType==='pen'||e.pointerType==='mouse'}
 canvas.addEventListener('pointerdown',onPointerDown,{passive:false});
 canvas.addEventListener('pointermove',onPointerMove,{passive:false});
@@ -619,47 +1050,35 @@ canvas.addEventListener('pointercancel',onPointerUp);
 
 function onPointerDown(e){
   e.preventDefault();
-  activePointers[e.pointerId]={x:e.clientX,y:e.clientY,type:e.pointerType};
+  activePointers[e.pointerId]={x:e.clientX,y:e.clientY};
   canvas.setPointerCapture(e.pointerId);
-  const n=Object.keys(activePointers).length;
-  const rect=canvas.parentElement.getBoundingClientRect();
+  const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
   if(isPenOrMouse(e)&&n===1){
-    drawing=true;
-    const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
-    const p=e.pressure||0.5;
-    curStroke={col:penCol,size:penSz,erase:eraseOn,pts:[{x:v.x,y:v.y,p}]};
+    drawing=true;const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
+    curStroke={col:penCol,size:penSz,erase:eraseOn,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
   } else if(!isPenOrMouse(e)){
     if(n===1){panning=true;panStart={x:e.clientX,y:e.clientY};panOffStart={x:offsetX,y:offsetY}}
     else if(n===2){
       drawing=false;panning=false;curStroke=null;
       const pts=Object.values(activePointers);
       lastTouchDist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
-      lastTouchMid={x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top};
-      render();
+      lastTouchMid={x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top};render();
     }
   }
 }
 
 function onPointerMove(e){
-  e.preventDefault();
-  if(!activePointers[e.pointerId])return;
+  e.preventDefault();if(!activePointers[e.pointerId])return;
   activePointers[e.pointerId]={x:e.clientX,y:e.clientY};
-  const n=Object.keys(activePointers).length;
-  const rect=canvas.parentElement.getBoundingClientRect();
+  const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
   if(n===2){
-    const pts=Object.values(activePointers);
-    const dist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
+    const pts=Object.values(activePointers),dist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
     const mid={x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top};
     if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastTouchMid.y;render()}
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
-    if(drawing&&curStroke){
-      const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
-      const p=e.pressure||0.5;
-      curStroke.pts.push({x:v.x,y:v.y,p});render();
-    } else if(panning&&panStart){
-      offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render();
-    }
+    if(drawing&&curStroke){const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render()}
+    else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
 }
 
@@ -678,45 +1097,34 @@ function onPointerUp(e){
 }
 
 canvas.addEventListener('wheel',e=>{
-  e.preventDefault();
-  const rect=canvas.parentElement.getBoundingClientRect();
+  e.preventDefault();const rect=canvas.parentElement.getBoundingClientRect();
   applyZoom(scale*(e.deltaY<0?1.1:.9),e.clientX-rect.left,e.clientY-rect.top);
 },{passive:false});
 
-/* ── UNDO / REDO ── */
+/* ── UNDO/REDO ── */
 function syncUndoRedo(){
   const u=document.getElementById('undo-fab'),r=document.getElementById('redo-fab');
   if(u)u.disabled=!undoStacks[curPage]||!undoStacks[curPage].length;
   if(r)r.disabled=!redoStacks[curPage]||!redoStacks[curPage].length;
 }
-function snapshotPage(){
-  return {
-    strokes:JSON.parse(JSON.stringify(strokes())),
-    images: images().map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
-  };
-}
+function snapshotPage(){return{strokes:JSON.parse(JSON.stringify(strokes())),images:images().map(i=>({x:i.x,y:i.y,w:i.w,h:i.h,src:i.src}))}}
 function restorePageSnapshot(snap){
   pageData[curPage].strokes=snap.strokes;
   pageData[curPage].images=(snap.images||[]).map(img=>({...img,_el:null}));
   pageData[curPage].images.forEach(img=>loadImgEl(img));
 }
 function commitStroke(stroke){
-  undoStacks[curPage].push(snapshotPage());
-  if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
-  redoStacks[curPage]=[];
-  strokes().push(stroke);
-  updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
+  undoStacks[curPage].push(snapshotPage());if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
+  redoStacks[curPage]=[];strokes().push(stroke);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
 }
 function undo(){
   if(!undoStacks[curPage]||!undoStacks[curPage].length){showToast('Nothing to undo');return}
-  redoStacks[curPage].push(snapshotPage());
-  restorePageSnapshot(undoStacks[curPage].pop());
+  redoStacks[curPage].push(snapshotPage());restorePageSnapshot(undoStacks[curPage].pop());
   render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
 }
 function redo(){
   if(!redoStacks[curPage]||!redoStacks[curPage].length){showToast('Nothing to redo');return}
-  undoStacks[curPage].push(snapshotPage());
-  restorePageSnapshot(redoStacks[curPage].pop());
+  undoStacks[curPage].push(snapshotPage());restorePageSnapshot(redoStacks[curPage].pop());
   render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
 }
 
@@ -726,64 +1134,34 @@ imgInput.addEventListener('change',e=>{
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    const src=ev.target.result;
-    const tempImg=new Image();
+    const src=ev.target.result,tempImg=new Image();
     tempImg.onload=()=>{
-      // Resize to max 1920px on longest side
-      const MAX=1920;
-      let iw=tempImg.naturalWidth,ih=tempImg.naturalHeight;
-      if(iw>MAX||ih>MAX){
-        const ratio=Math.min(MAX/iw,MAX/ih);iw=Math.round(iw*ratio);ih=Math.round(ih*ratio);
-      }
+      const MAX=1920;let iw=tempImg.naturalWidth,ih=tempImg.naturalHeight;
+      if(iw>MAX||ih>MAX){const r=Math.min(MAX/iw,MAX/ih);iw=Math.round(iw*r);ih=Math.round(ih*r)}
       const oc=document.createElement('canvas');oc.width=iw;oc.height=ih;
       oc.getContext('2d').drawImage(tempImg,0,0,iw,ih);
-      const resizedSrc=oc.toDataURL('image/jpeg',0.85);
-
-      // Place at current viewport centre in virtual coords
-      const cx=canvas.parentElement.offsetWidth/2;
-      const cy=canvas.parentElement.offsetHeight/2;
-      const vCentre=toVirt(cx,cy);
-      // Display at natural pixel size / scale, capped to 80% of viewport
-      const maxVW=(canvas.parentElement.offsetWidth*0.8)/scale;
-      const maxVH=(canvas.parentElement.offsetHeight*0.8)/scale;
+      const rSrc=oc.toDataURL('image/jpeg',.85);
+      const cx=canvas.parentElement.offsetWidth/2,cy=canvas.parentElement.offsetHeight/2;
+      const vC=toVirt(cx,cy);
+      const maxVW=(canvas.parentElement.offsetWidth*.8)/scale,maxVH=(canvas.parentElement.offsetHeight*.8)/scale;
       let vw=iw/scale,vh=ih/scale;
       if(vw>maxVW||vh>maxVH){const r=Math.min(maxVW/vw,maxVH/vh);vw*=r;vh*=r}
-
-      const imgObj={
-        x:vCentre.x-vw/2,y:vCentre.y-vh/2,
-        w:vw,h:vh,src:resizedSrc,_el:null
-      };
-      loadImgEl(imgObj);
-      undoStacks[curPage].push(snapshotPage());
+      const imgObj={x:vC.x-vw/2,y:vC.y-vh/2,w:vw,h:vh,src:rSrc,_el:null};
+      loadImgEl(imgObj);undoStacks[curPage].push(snapshotPage());
       if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
-      redoStacks[curPage]=[];
-      images().push(imgObj);
-      updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
-      showToast('Image inserted');
-    };
-    tempImg.src=src;
+      redoStacks[curPage]=[];images().push(imgObj);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();showToast('Image inserted');
+    };tempImg.src=src;
   };
-  reader.readAsDataURL(file);
-  imgInput.value=''; // allow re-selecting same file
+  reader.readAsDataURL(file);imgInput.value='';
 });
-
-function loadImgEl(imgObj){
-  const el=new Image();el.src=imgObj.src;
-  el.onload=()=>render();
-  imgObj._el=el;
-}
+function loadImgEl(imgObj){const el=new Image();el.src=imgObj.src;el.onload=()=>render();imgObj._el=el}
 
 /* ── BACKGROUND COLOUR ── */
-function applyBgColour(col, save=true){
-  bgColour=col;
-  document.getElementById('canvas-wrap').style.background=col;
+function applyBgColour(col,save=true){
+  bgColour=col;document.getElementById('canvas-wrap').style.background=col;
   document.documentElement.style.setProperty('--bg-colour',col);
-  // Update swatch active state
-  document.querySelectorAll('.bgsw').forEach(el=>{
-    el.classList.toggle('active',el.dataset.bg===col);
-  });
-  render();
-  if(save)scheduleAutoSave();
+  document.querySelectorAll('.bgsw').forEach(el=>el.classList.toggle('active',el.dataset.bg===col));
+  render();if(save)scheduleAutoSave();
 }
 
 /* ── SHAPE RECOGNITION ── */
@@ -793,12 +1171,10 @@ function trySnapShape(stroke){
   let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
   for(const p of pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
   const bW=mxX-mnX,bH=mxY-mnY;if(bW<12&&bH<12)return null;
-  const sL=pathLength(pts);
-  const endDist=Math.hypot(pts[pts.length-1].x-pts[0].x,pts[pts.length-1].y-pts[0].y);
+  const sL=pathLength(pts),endDist=Math.hypot(pts[pts.length-1].x-pts[0].x,pts[pts.length-1].y-pts[0].y);
   if(endDist/sL>0.85)return{type:'line',x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
   if(endDist>sL*0.3)return null;
-  const eps=Math.max(bW,bH)*0.06;
-  const simple=rdp(pts,eps);
+  const eps=Math.max(bW,bH)*0.06,simple=rdp(pts,eps);
   const eff=(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)?simple.slice(0,-1):simple;
   const n=eff.length;
   if(n===3)return{type:'triangle',pts:eff};
@@ -807,7 +1183,7 @@ function trySnapShape(stroke){
   return null;
 }
 function pathLength(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);return l}
-function rdp(pts,eps){if(pts.length<3)return pts.slice();const f=pts[0],la=pts[pts.length-1];let mx=0,mi=0;for(let i=1;i<pts.length-1;i++){const d=p2ld(pts[i],f,la);if(d>mx){mx=d;mi=i}}if(mx>eps){return rdp(pts.slice(0,mi+1),eps).slice(0,-1).concat(rdp(pts.slice(mi),eps))}return[f,la]}
+function rdp(pts,eps){if(pts.length<3)return pts.slice();const f=pts[0],la=pts[pts.length-1];let mx=0,mi=0;for(let i=1;i<pts.length-1;i++){const d=p2ld(pts[i],f,la);if(d>mx){mx=d;mi=i}}if(mx>eps)return rdp(pts.slice(0,mi+1),eps).slice(0,-1).concat(rdp(pts.slice(mi),eps));return[f,la]}
 function p2ld(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return Math.hypot(p.x-a.x,p.y-a.y);const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy);return Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy))}
 function makeShapeStroke(shape,orig){
   const base={col:orig.col,size:orig.size,erase:false};
@@ -821,29 +1197,18 @@ function makeShapeStroke(shape,orig){
 /* ── PAGES ── */
 function addPage(){
   pageData.push({strokes:[],images:[]});undoStacks.push([]);redoStacks.push([]);
-  curPage=pageData.length-1;buildPageStrip();resetView();
-  showToast('Page '+(curPage+1)+' added');scheduleAutoSave();
+  curPage=pageData.length-1;buildPageStrip();resetView();showToast('Page '+(curPage+1)+' added');scheduleAutoSave();
 }
 function switchPage(i){if(i===curPage)return;curPage=i;buildPageStrip();resetView();updatePageCounter()}
-function deletePage(i){
-  document.getElementById('del-title').textContent='Delete this page?';
-  document.getElementById('del-msg').textContent='All annotations on this page will be lost.';
-  deleteTarget=i;deleteBoardId=null;
-  document.getElementById('del-confirm').classList.add('active');
-}
-let deleteTarget=null;
-function cancelDelete(){document.getElementById('del-confirm').classList.remove('active');deleteTarget=null;deleteBoardId=null;deleteBoardName=null}
-function confirmDelete(){
-  if(deleteBoardId){
-    dbDelete(deleteBoardId).then(()=>{renderHomeGrid();showToast('Board deleted')});
-    document.getElementById('del-confirm').classList.remove('active');deleteBoardId=null;deleteBoardName=null;
-  } else if(deleteTarget!==null){
-    if(pageData.length===1){showToast('Cannot delete the only page');document.getElementById('del-confirm').classList.remove('active');return}
-    pageData.splice(deleteTarget,1);undoStacks.splice(deleteTarget,1);redoStacks.splice(deleteTarget,1);
-    if(curPage>=pageData.length)curPage=pageData.length-1;
-    document.getElementById('del-confirm').classList.remove('active');deleteTarget=null;
-    buildPageStrip();render();showToast('Page deleted');scheduleAutoSave();
-  }
+let pageDeleteTarget=null;
+function deletePage(i){pageDeleteTarget=i;document.getElementById('page-del-confirm').classList.add('active')}
+function confirmPageDelete(){
+  if(pageDeleteTarget===null)return;
+  if(pageData.length===1){showToast('Cannot delete the only page');document.getElementById('page-del-confirm').classList.remove('active');return}
+  pageData.splice(pageDeleteTarget,1);undoStacks.splice(pageDeleteTarget,1);redoStacks.splice(pageDeleteTarget,1);
+  if(curPage>=pageData.length)curPage=pageData.length-1;
+  document.getElementById('page-del-confirm').classList.remove('active');pageDeleteTarget=null;
+  buildPageStrip();render();showToast('Page deleted');scheduleAutoSave();
 }
 function buildPageStrip(){
   const strip=document.getElementById('page-strip');strip.querySelectorAll('.page-thumb').forEach(el=>el.remove());
@@ -858,23 +1223,13 @@ function buildPageStrip(){
   });
   updatePageCounter();
 }
-function updateThumb(i){
-  const strip=document.getElementById('page-strip');const thumbs=strip.querySelectorAll('.page-thumb');
-  if(thumbs[i]){const tc=thumbs[i].querySelector('canvas');if(tc)renderThumb(i,tc)}
-}
+function updateThumb(i){const strip=document.getElementById('page-strip');const thumbs=strip.querySelectorAll('.page-thumb');if(thumbs[i]){const tc=thumbs[i].querySelector('canvas');if(tc)renderThumb(i,tc)}}
 function renderThumb(i,tc){
-  const tctx=tc.getContext('2d');const W=tc.width,H=tc.height;
+  const tctx=tc.getContext('2d'),W=tc.width,H=tc.height;
   tctx.clearRect(0,0,W,H);tctx.fillStyle=bgColour;tctx.fillRect(0,0,W,H);
   tctx.fillStyle='rgba(31,56,100,0.12)';
   for(let x=0;x<W;x+=8)for(let y=0;y<H;y+=8){tctx.beginPath();tctx.arc(x,y,.7,0,Math.PI*2);tctx.fill()}
-  const pg=pageData[i];if(!pg)return;
-  // Draw images in thumbnail
-  for(const img of pg.images){
-    if(!img._el||!img._el.complete)continue;
-    // Rough thumb positioning — just draw scaled
-    const sc2=0.05;tctx.drawImage(img._el,img.x*sc2+W/4,img.y*sc2+H/4,img.w*sc2,img.h*sc2);
-  }
-  if(!pg.strokes.length)return;
+  const pg=pageData[i];if(!pg||!pg.strokes.length)return;
   let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
   for(const s of pg.strokes)for(const p of s.pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
   if(mnX===Infinity)return;
@@ -896,8 +1251,7 @@ function updatePageCounter(){
 function clearPage(){
   if(!strokes().length&&!images().length){showToast('Page already empty');return}
   undoStacks[curPage].push(snapshotPage());redoStacks[curPage]=[];
-  pageData[curPage]={strokes:[],images:[]};
-  render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
+  pageData[curPage]={strokes:[],images:[]};render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
 }
 
 /* ── TITLE EDIT ── */
@@ -918,7 +1272,6 @@ async function exportPDF(){
   for(let pi=0;pi<pageData.length;pi++){
     statusEl.textContent=`Exporting page ${pi+1} of ${pageData.length}…`;
     const pg=pageData[pi];
-    // Compute bounds across strokes AND images
     let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
     for(const s of pg.strokes)for(const p of s.pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
     for(const img of pg.images){if(img.x<mnX)mnX=img.x;if(img.y<mnY)mnY=img.y;if(img.x+img.w>mxX)mxX=img.x+img.w;if(img.y+img.h>mxY)mxY=img.y+img.h}
@@ -927,21 +1280,13 @@ async function exportPDF(){
     if(mnX===Infinity){rs=4;rox=PDF_W/2;roy=PDF_H/2}
     else{const bW=(mxX-mnX)+pad*2,bH=(mxY-mnY)+pad*2;rs=Math.min(PDF_W/bW,PDF_H/bH);rox=(PDF_W-bW*rs)/2+(-mnX+pad)*rs;roy=(PDF_H-bH*rs)/2+(-mnY+pad)*rs}
     const oc_ctx=oc.getContext('2d');
-    // Background
     oc_ctx.fillStyle=bgColour;oc_ctx.fillRect(0,0,PDF_W,PDF_H);
-    // Dots
     oc_ctx.fillStyle='rgba(31,56,100,0.13)';
     const ds=DOT_SPACING*rs,ox_=rox%ds,oy_=roy%ds;
     for(let x=ox_;x<PDF_W+ds;x+=ds)for(let y=oy_;y<PDF_H+ds;y+=ds){oc_ctx.beginPath();oc_ctx.arc(x,y,DOT_RADIUS*rs,0,Math.PI*2);oc_ctx.fill()}
-    // Images
-    for(const img of pg.images){
-      if(!img._el)continue;
-      oc_ctx.drawImage(img._el,img.x*rs+rox,img.y*rs+roy,img.w*rs,img.h*rs);
-    }
-    // Strokes — pressure sensitive in PDF too
+    for(const img of pg.images){if(!img._el)continue;oc_ctx.drawImage(img._el,img.x*rs+rox,img.y*rs+roy,img.w*rs,img.h*rs)}
     for(const s of pg.strokes){
-      if(s.pts.length<2)continue;
-      oc_ctx.save();oc_ctx.lineCap='round';oc_ctx.lineJoin='round';
+      if(s.pts.length<2)continue;oc_ctx.save();oc_ctx.lineCap='round';oc_ctx.lineJoin='round';
       if(s.erase){oc_ctx.globalCompositeOperation='destination-out';oc_ctx.strokeStyle='rgba(0,0,0,1)';oc_ctx.lineWidth=s.size*rs*6;oc_ctx.beginPath();oc_ctx.moveTo(s.pts[0].x*rs+rox,s.pts[0].y*rs+roy);for(let i=1;i<s.pts.length;i++)oc_ctx.lineTo(s.pts[i].x*rs+rox,s.pts[i].y*rs+roy);oc_ctx.stroke()}
       else{oc_ctx.globalCompositeOperation='source-over';oc_ctx.strokeStyle=s.col;for(let i=1;i<s.pts.length;i++){const prev=s.pts[i-1],curr=s.pts[i];const avgP=((prev.p||.5)+(curr.p||.5))/2;oc_ctx.lineWidth=Math.max(.5,s.size*(0.4+avgP*1.6)*rs);oc_ctx.beginPath();oc_ctx.moveTo(prev.x*rs+rox,prev.y*rs+roy);oc_ctx.lineTo(curr.x*rs+rox,curr.y*rs+roy);oc_ctx.stroke()}}
       oc_ctx.restore();
