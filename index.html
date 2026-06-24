@@ -257,6 +257,48 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #img-input{display:none}
+/* ── LESSON IMPORT ── */
+#lesson-modal{display:none;position:fixed;inset:0;z-index:400;background:rgba(22,42,78,.88);
+  align-items:center;justify-content:center}
+#lesson-modal.active{display:flex}
+#lesson-box{background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;
+  width:min(90vw,560px);max-height:80vh;display:flex;flex-direction:column;
+  box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#lesson-box-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+#lesson-box-head h3{font-size:14px;font-weight:700;color:white}
+#lesson-close-btn{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.1);
+  border:none;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+#lesson-box-body{padding:16px 20px;flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+#lesson-box-body p{font-size:12px;color:rgba(255,255,255,.55);line-height:1.5}
+#lesson-paste{width:100%;height:160px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;padding:10px 12px;color:white;font-family:monospace;font-size:11px;
+  resize:none;outline:none;-webkit-user-select:text;user-select:text;touch-action:auto}
+#lesson-paste:focus{border-color:var(--yellow)}
+#lesson-import-btn{height:36px;background:var(--yellow);color:var(--navy);border:none;
+  border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;transition:opacity .13s;flex-shrink:0}
+#lesson-import-btn:hover{opacity:.88}
+#lesson-progress{font-size:11px;color:rgba(255,255,255,.5);text-align:center;display:none}
+
+/* Section dropdowns */
+.sec-drop{position:relative;display:inline-flex;flex-shrink:0}
+.sec-drop-btn{height:28px;padding:0 8px;background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.18);border-radius:6px;color:white;
+  font-size:10px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;
+  display:flex;align-items:center;gap:4px;white-space:nowrap;transition:background .13s}
+.sec-drop-btn:hover{background:rgba(255,255,255,.2)}
+.sec-drop-btn svg{flex-shrink:0}
+.sec-drop-menu{display:none;position:absolute;top:calc(100% + 4px);right:0;
+  background:var(--navydim);border:1px solid rgba(255,255,255,.18);border-radius:8px;
+  padding:4px;min-width:140px;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:200}
+.sec-drop-menu.open{display:block}
+.sec-drop-item{padding:8px 12px;font-size:12px;font-weight:500;color:white;
+  cursor:pointer;border-radius:5px;transition:background .12s;white-space:nowrap}
+.sec-drop-item:hover{background:rgba(255,255,255,.12)}
+/* Hidden iframe for rendering lesson HTML */
+#lesson-iframe{position:fixed;left:-9999px;top:0;width:1200px;height:800px;border:none;
+  pointer-events:none;z-index:-1;visibility:hidden}
 </style>
 </head>
 <body>
@@ -322,6 +364,10 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
         <polyline points="21 15 16 10 5 21"/>
       </svg>
     </button>
+    <!-- Lesson import button — replaced by section dropdowns after import -->
+    <div id="lesson-btns">
+      <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content">＋ Lesson</button>
+    </div>
     <button class="tbtn" onclick="exportPDF()" title="Export PDF">&#8595; PDF</button>
     <div id="prog-wrap"><div id="prog-fill"></div></div>
   </div>
@@ -451,6 +497,26 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 </div>
 
 <div id="toast"></div>
+
+<!-- Lesson import modal -->
+<div id="lesson-modal">
+  <div id="lesson-box">
+    <div id="lesson-box-head">
+      <h3>Import Lesson Content</h3>
+      <button id="lesson-close-btn" onclick="closeLessonModal()">×</button>
+    </div>
+    <div id="lesson-box-body">
+      <p>Paste the full HTML of your lesson file below. The app will extract each slide section and make it available to drop onto the canvas.</p>
+      <textarea id="lesson-paste" placeholder="Paste lesson HTML here…" spellcheck="false"></textarea>
+      <div id="lesson-progress">Processing slides…</div>
+      <button id="lesson-import-btn" onclick="importLesson()">Import Lesson</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden iframe for rendering lesson slides -->
+<iframe id="lesson-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+
 
 <script>
 /* ═══════════════════════════════════════════════════════
@@ -905,6 +971,7 @@ async function saveCurrentBoard(){
     created:boardCreated,updated:Date.now(),
     folderId:existing?existing.folderId:null,
     thumb,bgColour,
+    lessonSections: lessonSections,
     pages:pageData.map(pg=>({
       strokes:pg.strokes.map(s=>({col:s.col,size:s.size,erase:s.erase,pts:s.pts})),
       images:pg.images.map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
@@ -982,6 +1049,8 @@ function loadBoardIntoCanvas(board){
   });
   if(!pageData.length)pageData=[{strokes:[],images:[]}];
   pageData.forEach(pg=>pg.images.forEach(img=>loadImgEl(img)));
+  lessonSections = board.lessonSections || {};
+  buildSectionDropdowns();
   undoStacks=pageData.map(()=>[]);redoStacks=pageData.map(()=>[]);curPage=0;
   const title=board.name||'Untitled Board';
   document.getElementById('app-title').textContent=title;document.title=title+' — LA Canvas';
@@ -1366,6 +1435,254 @@ document.getElementById('pen-pill').style.setProperty('--cur-col',penCol);
 /* ── TOAST ── */
 let toastTimer;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200)}
+
+
+/* ═══════════════════════════════════════════════════════
+   LESSON IMPORT
+   Parses pasted lesson HTML, renders each slide via iframe,
+   screenshots them with html2canvas, stores as section images.
+   Section dropdowns in topbar let you drop any slide onto canvas.
+═══════════════════════════════════════════════════════ */
+let lessonSections = {}; // { 'Starter':['dataURL',...], 'I Do':[...], 'We Do':[...], 'You Do':[...] }
+const SECTION_ORDER = ['Starter','I Do','We Do','You Do'];
+const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
+
+function openLessonModal(){
+  document.getElementById('lesson-modal').classList.add('active');
+  // Allow text selection inside textarea
+  const ta = document.getElementById('lesson-paste');
+  ta.style.pointerEvents = 'auto';
+  setTimeout(()=>ta.focus(), 100);
+}
+function closeLessonModal(){
+  document.getElementById('lesson-modal').classList.remove('active');
+  document.getElementById('lesson-paste').value='';
+  document.getElementById('lesson-progress').style.display='none';
+}
+
+async function importLesson(){
+  const html = document.getElementById('lesson-paste').value.trim();
+  if(!html){ showToast('Please paste lesson HTML first'); return; }
+
+  const progressEl = document.getElementById('lesson-progress');
+  const importBtn  = document.getElementById('lesson-import-btn');
+  progressEl.style.display='block';
+  progressEl.textContent='Loading lesson…';
+  importBtn.disabled=true;
+
+  // Load html2canvas if needed
+  if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+
+  // Load the HTML into the hidden iframe via blob URL
+  const blob = new Blob([html], {type:'text/html'});
+  const blobUrl = URL.createObjectURL(blob);
+  const iframe = document.getElementById('lesson-iframe');
+
+  await new Promise((resolve, reject)=>{
+    iframe.onload = resolve;
+    iframe.onerror = reject;
+    iframe.src = blobUrl;
+  });
+
+  // Wait for MathJax to finish inside the iframe (up to 5s)
+  progressEl.textContent='Waiting for content to render…';
+  await new Promise(r=>setTimeout(r, 800));
+  try {
+    const iframeWin = iframe.contentWindow;
+    if(iframeWin.MathJax && iframeWin.MathJax.typesetPromise){
+      await iframeWin.MathJax.typesetPromise();
+    }
+  } catch(e){ /* MathJax not available or cross-origin — continue */ }
+  await new Promise(r=>setTimeout(r, 400));
+
+  // Find all slides in the iframe document
+  const iDoc = iframe.contentDocument;
+  if(!iDoc){ showToast('Could not read lesson content'); importBtn.disabled=false; return; }
+
+  // Make iframe visible for screenshotting
+  iframe.style.visibility='visible';
+  iframe.style.left='0';
+  iframe.style.top='0';
+
+  const sections = {'Starter':[],'I Do':[],'We Do':[],'You Do':[]};
+
+  // Find slides by section type — look for CORE_SLIDES in the iframe's JS context
+  // then activate each slide, screenshot it
+  const iWin = iframe.contentWindow;
+  let slideList = [];
+
+  try {
+    // Try to read CORE_SLIDES from the lesson JS
+    if(iWin.SLIDES){
+      slideList = iWin.SLIDES.map(s=>({sec:s.sec, id:s.id}));
+    } else if(iWin.CORE_SLIDES){
+      slideList = iWin.CORE_SLIDES.map(s=>({sec:s.sec, id:s.id}));
+    }
+  } catch(e){}
+
+  if(!slideList.length){
+    // Fallback: scan DOM for slide elements with section pill text
+    const allSlides = iDoc.querySelectorAll('.slide');
+    allSlides.forEach(slide=>{
+      const pill = slide.querySelector('.s-pill');
+      const sec  = pill ? pill.textContent.trim() : null;
+      if(sec && SECTION_ORDER.includes(sec)) slideList.push({sec, el:slide});
+    });
+  }
+
+  if(!slideList.length){
+    showToast('No slides found — check the lesson HTML');
+    resetIframe(); importBtn.disabled=false; return;
+  }
+
+  progressEl.textContent=`Capturing ${slideList.length} slides…`;
+
+  for(let i=0; i<slideList.length; i++){
+    const item = slideList[i];
+    const sec  = item.sec;
+    if(!sections[sec]) sections[sec]=[];
+
+    progressEl.textContent=`Capturing ${sec} (${i+1}/${slideList.length})…`;
+
+    // Activate this slide in the iframe
+    try {
+      if(item.el){
+        // DOM-based: show just this slide
+        iDoc.querySelectorAll('.slide').forEach(s=>{
+          s.style.display='none';s.classList.remove('active');
+        });
+        item.el.style.display='flex';item.el.classList.add('active');
+      } else if(iWin.go){
+        // Use lesson navigation to reach this slide index
+        const idx = slideList.indexOf(item)+1;
+        if(iWin.cur !== undefined) iWin.cur = idx;
+        // Activate slide directly
+        const slideEl = iDoc.getElementById(item.id);
+        if(slideEl){
+          iDoc.querySelectorAll('.slide').forEach(s=>{s.style.display='none';s.classList.remove('active')});
+          slideEl.style.display='flex';slideEl.classList.add('active');
+        }
+      }
+    } catch(e){}
+
+    await new Promise(r=>setTimeout(r, 150));
+
+    // Screenshot the slide-area or the active slide
+    try {
+      const target = iDoc.getElementById('slide-area') || iDoc.body;
+      const shotCanvas = await html2canvas(target, {
+        scale:1.5,
+        useCORS:true,
+        allowTaint:true,
+        backgroundColor:'#f4f6fb',
+        logging:false,
+        windowWidth:1200,
+        windowHeight:800
+      });
+      sections[sec].push(shotCanvas.toDataURL('image/jpeg', 0.88));
+    } catch(e){
+      console.warn('Screenshot failed for slide',i,e);
+    }
+  }
+
+  resetIframe();
+  URL.revokeObjectURL(blobUrl);
+
+  // Store on board and update UI
+  lessonSections = sections;
+  buildSectionDropdowns();
+  closeLessonModal();
+  showToast('Lesson imported — use section buttons to add slides');
+  importBtn.disabled=false;
+}
+
+function resetIframe(){
+  const iframe=document.getElementById('lesson-iframe');
+  iframe.style.visibility='hidden';iframe.style.left='-9999px';iframe.src='about:blank';
+}
+
+function buildSectionDropdowns(){
+  const container = document.getElementById('lesson-btns');
+  container.innerHTML='';
+
+  const hasSections = SECTION_ORDER.some(s=>lessonSections[s]&&lessonSections[s].length);
+  if(!hasSections){
+    // Back to import button
+    const btn=document.createElement('button');btn.className='tbtn';btn.textContent='＋ Lesson';
+    btn.onclick=openLessonModal;container.appendChild(btn);
+    return;
+  }
+
+  // Add re-import button (small)
+  const reBtn=document.createElement('button');
+  reBtn.className='tbtn';reBtn.title='Re-import lesson';reBtn.style.cssText='min-width:22px;width:22px;padding:0;font-size:11px';
+  reBtn.textContent='↺';reBtn.onclick=openLessonModal;
+  container.appendChild(reBtn);
+
+  SECTION_ORDER.forEach(sec=>{
+    const slides=lessonSections[sec];
+    if(!slides||!slides.length)return;
+
+    if(slides.length===1){
+      // Single slide — direct insert button
+      const btn=document.createElement('button');btn.className='tbtn';
+      btn.textContent=SECTION_LABELS[sec];
+      btn.onclick=()=>insertLessonSlide(slides[0],sec);
+      container.appendChild(btn);
+    } else {
+      // Multiple slides — dropdown
+      const wrap=document.createElement('div');wrap.className='sec-drop';
+      const btn=document.createElement('button');btn.className='sec-drop-btn';
+      btn.innerHTML=`${SECTION_LABELS[sec]} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+      const menu=document.createElement('div');menu.className='sec-drop-menu';
+      slides.forEach((src,i)=>{
+        const item=document.createElement('div');item.className='sec-drop-item';
+        item.textContent=`${sec} ${i+1}`;
+        item.onclick=()=>{insertLessonSlide(src,sec+' '+(i+1));menu.classList.remove('open')};
+        menu.appendChild(item);
+      });
+      btn.onclick=(e)=>{
+        e.stopPropagation();
+        // Close all other open menus
+        document.querySelectorAll('.sec-drop-menu.open').forEach(m=>{if(m!==menu)m.classList.remove('open')});
+        menu.classList.toggle('open');
+      };
+      wrap.appendChild(btn);wrap.appendChild(menu);
+      container.appendChild(wrap);
+    }
+  });
+
+  // Close dropdowns on outside tap
+  document.addEventListener('pointerdown',()=>{
+    document.querySelectorAll('.sec-drop-menu.open').forEach(m=>m.classList.remove('open'));
+  },{passive:true});
+}
+
+function insertLessonSlide(src, label){
+  const tempImg=new Image();
+  tempImg.onload=()=>{
+    let iw=tempImg.naturalWidth,ih=tempImg.naturalHeight;
+    // Place to fill 90% of viewport width
+    const maxVW=(canvas.parentElement.offsetWidth*0.9)/scale;
+    const maxVH=(canvas.parentElement.offsetHeight*0.85)/scale;
+    let vw=iw/scale,vh=ih/scale;
+    if(vw>maxVW||vh>maxVH){const r=Math.min(maxVW/vw,maxVH/vh);vw*=r;vh*=r}
+    const cx=canvas.parentElement.offsetWidth/2,cy=canvas.parentElement.offsetHeight/2;
+    const vC=toVirt(cx,cy);
+    const imgObj={x:vC.x-vw/2,y:vC.y-vh/2,w:vw,h:vh,src,_el:null};
+    loadImgEl(imgObj);
+    undoStacks[curPage].push(snapshotPage());
+    if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
+    redoStacks[curPage]=[];
+    images().push(imgObj);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
+    showToast(label+' added to canvas');
+  };
+  tempImg.src=src;
+}
+
+// Restore lesson sections when board is loaded (stored in board record)
+// We store lessonSections alongside the board data
+const _origSaveBoard = saveCurrentBoard;
 
 /* ── INIT ── */
 openDB().then(()=>showHome()).catch(()=>{showToast('Boards cannot be saved in private browsing');newBoard()});
