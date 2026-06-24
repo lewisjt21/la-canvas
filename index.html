@@ -173,7 +173,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 
 /* PEN UI */
-#pen-ui-wrap{position:fixed;left:16px;bottom:68px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none}
+#pen-ui-wrap{position:fixed;left:16px;bottom:16px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none}
 #pen-pill{width:44px;height:44px;border-radius:50%;background:var(--navylt);border:1.5px solid rgba(255,255,255,.3);
   display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.4);
   flex-shrink:0;position:relative;color:white;cursor:pointer;transition:background .15s}
@@ -202,7 +202,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .bgsw:hover{transform:scale(1.2)}
 .bgsw.active{border-color:white;box-shadow:0 0 0 1px rgba(255,255,255,.4)}
 
-#ur-wrap{position:fixed;right:16px;bottom:68px;z-index:90;display:flex;flex-direction:column;gap:8px}
+#ur-wrap{position:fixed;right:16px;bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px}
 #snap-fab,#undo-fab,#redo-fab{width:40px;height:40px;border-radius:50%;background:var(--navylt);
   border:1.5px solid rgba(255,255,255,.25);color:white;display:flex;align-items:center;justify-content:center;
   cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:background .13s}
@@ -355,7 +355,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     </button>
     <!-- Lesson import button — replaced by section dropdowns after import -->
     <div id="lesson-btns" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-      <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content">＋ Lesson</button>
+      <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Lesson</button>
     </div>
     <button class="tbtn" onclick="exportPDF()" title="Export PDF">&#8595; PDF</button>
   </div>
@@ -1599,7 +1599,7 @@ function buildSectionDropdowns(){
 
   const hasSections=SECTION_ORDER.some(s=>lessonSections[s]&&lessonSections[s].length);
   if(!hasSections){
-    const btn=document.createElement('button');btn.className='tbtn';btn.textContent='  Lesson';
+    const btn=document.createElement('button');btn.className='tbtn';btn.innerHTML='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Lesson';
     btn.onclick=openLessonModal;container.appendChild(btn);
     return;
   }
