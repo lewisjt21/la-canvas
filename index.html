@@ -894,16 +894,20 @@ async function confirmFolderAction(){
   if(!name){showToast('Please enter a name');return}
   if(folderSheetMode==='create'){
     const parentId=currentParentId();
+    const newId=genId();
     const colour=await nextFolderColour(parentId);
-    await dbPut(FOLDERS,{id:genId(),name,parentId,created:Date.now(),colour});
-    showToast('Folder created');
+    await dbPut(FOLDERS,{id:newId,name,parentId,created:Date.now(),colour});
+    closeFolderSheet();
+    await navInto(newId);
+    return;
   } else {
     if(!ctxTargetFolder)return;
     ctxTargetFolder.name=name;
     await dbPut(FOLDERS,{...ctxTargetFolder});
     showToast('Folder renamed');
   }
-  closeFolderSheet();renderHome();
+  closeFolderSheet();
+  await renderHome();
 }
 
 function closeFolderSheet(){
@@ -1064,7 +1068,11 @@ function loadBoardIntoCanvas(board){
   resizeCanvas();buildPageStrip();syncUndoRedo();setSaveIndicator('saved');render();
 }
 
-function goHome(){showHome()}
+function goHome(){
+  // Save current nav position so we return to the right folder
+  const returnStack = navStack.slice();
+  showHome().then(()=>{ navStack=returnStack; renderHome(); });
+}
 
 /* -- CANVAS ENGINE -- */
 const canvas=document.getElementById('main-canvas');
@@ -1312,44 +1320,10 @@ function confirmPageDelete(){
   document.getElementById('page-del-confirm').classList.remove('active');pageDeleteTarget=null;
   buildPageStrip();render();showToast('Page deleted');scheduleAutoSave();
 }
-function buildPageStrip(){
-  const strip=document.getElementById('page-strip');strip.querySelectorAll('.page-thumb').forEach(el=>el.remove());
-  const addBtn=document.getElementById('add-page-btn');
-  pageData.forEach((_,i)=>{
-    const thumb=document.createElement('div');thumb.className='page-thumb'+(i===curPage?' active':'');
-    const tc=document.createElement('canvas');tc.width=120;tc.height=72;thumb.appendChild(tc);
-    const num=document.createElement('span');num.className='pg-num';num.textContent=i+1;thumb.appendChild(num);
-    if(pageData.length>1){const del=document.createElement('button');del.className='thumb-del';del.textContent=' ';del.addEventListener('pointerup',e=>{e.stopPropagation();deletePage(i)});thumb.appendChild(del)}
-    thumb.addEventListener('click',()=>switchPage(i));
-    strip.insertBefore(thumb,addBtn);renderThumb(i,tc);
-  });
-  updatePageCounter();
-}
-function updateThumb(i){const strip=document.getElementById('page-strip');const thumbs=strip.querySelectorAll('.page-thumb');if(thumbs[i]){const tc=thumbs[i].querySelector('canvas');if(tc)renderThumb(i,tc)}}
-function renderThumb(i,tc){
-  const tctx=tc.getContext('2d'),W=tc.width,H=tc.height;
-  tctx.clearRect(0,0,W,H);tctx.fillStyle=bgColour;tctx.fillRect(0,0,W,H);
-  tctx.fillStyle='rgba(31,56,100,0.12)';
-  for(let x=0;x<W;x+=8)for(let y=0;y<H;y+=8){tctx.beginPath();tctx.arc(x,y,.7,0,Math.PI*2);tctx.fill()}
-  const pg=pageData[i];if(!pg||!pg.strokes.length)return;
-  let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
-  for(const s of pg.strokes)for(const p of s.pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
-  if(mnX===Infinity)return;
-  const pad=10,bW=mxX-mnX||1,bH=mxY-mnY||1;
-  const sc=Math.min((W-pad*2)/bW,(H-pad*2)/bH)*.9;
-  const ox=pad+((W-pad*2)-bW*sc)/2-mnX*sc,oy=pad+((H-pad*2)-bH*sc)/2-mnY*sc;
-  for(const s of pg.strokes){
-    if(s.erase||s.pts.length<2)continue;
-    tctx.save();tctx.lineCap='round';tctx.lineJoin='round';tctx.strokeStyle=s.col;tctx.lineWidth=Math.max(1,s.size*sc);
-    tctx.beginPath();tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
-    for(let j=1;j<s.pts.length;j++)tctx.lineTo(s.pts[j].x*sc+ox,s.pts[j].y*sc+oy);
-    tctx.stroke();tctx.restore();
-  }
-}
-function updatePageCounter(){
-  document.getElementById('page-counter').textContent=(curPage+1)+' / '+pageData.length;
-  document.getElementById('prog-fill').style.width=((curPage+1)/pageData.length*100)+'%';
-}
+function buildPageStrip(){ /* page strip removed */ }
+
+function updatePageCounter(){ /* page counter removed */ }
+
 function clearPage(){
   if(!strokes().length&&!images().length){showToast('Page already empty');return}
   undoStacks[curPage].push(snapshotPage());redoStacks[curPage]=[];
