@@ -1164,6 +1164,12 @@ function onPointerDown(e){
   canvas.setPointerCapture(e.pointerId);
   const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
   if(isPenOrMouse(e)&&n===1){
+    // Commit any orphaned stroke from a missed pointerup/pointercancel
+    if(drawing && curStroke && curStroke.pts.length>0){
+      const orphan=curStroke;curStroke=null;drawing=false;
+      if(snapOn){const snap=trySnapShape(orphan);commitStroke(snap?makeShapeStroke(snap,orphan):orphan);}
+      else commitStroke(orphan);
+    }
     drawing=true;const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
     curStroke={col:penCol,size:penSz,erase:eraseOn,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
   } else if(!isPenOrMouse(e)){
