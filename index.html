@@ -939,7 +939,31 @@ function generateBoardThumb(){
 async function newBoard(){
   const id=genId();boardCreated=Date.now();
   const folderId=currentFolderId(); // null if not in a topic folder
-  await dbPut(BOARDS,{id,name:'Untitled Board',folderId,created:boardCreated,updated:boardCreated,thumb:null,bgColour:'#f7f9fd',pages:[{strokes:[],images:[]}]});
+
+  // Auto-name: "ClassName TopicName Lesson N"
+  let boardName='Untitled Board';
+  if(navStack.length>=2){
+    // We're inside a topic folder — build name from class + topic + lesson number
+    const [classFolder, topicFolder] = await Promise.all([
+      dbGet(FOLDERS, navStack[0]),
+      dbGet(FOLDERS, navStack[1])
+    ]);
+    if(classFolder && topicFolder){
+      const existing = await dbGetByIndex(BOARDS,'folderId',folderId);
+      const lessonNum = existing.length + 1;
+      boardName = `${classFolder.name} ${topicFolder.name} Lesson ${lessonNum}`;
+    }
+  } else if(navStack.length===1){
+    // Inside a class folder but no topic — use class name + lesson number
+    const classFolder = await dbGet(FOLDERS, navStack[0]);
+    if(classFolder){
+      const existing = await dbGetByIndex(BOARDS,'folderId',folderId);
+      const lessonNum = existing.length + 1;
+      boardName = `${classFolder.name} Lesson ${lessonNum}`;
+    }
+  }
+
+  await dbPut(BOARDS,{id,name:boardName,folderId,created:boardCreated,updated:boardCreated,thumb:null,bgColour:'#f7f9fd',pages:[{strokes:[],images:[]}]});
   const board=await dbGet(BOARDS,id);
   loadBoardIntoCanvas(board);
 }
