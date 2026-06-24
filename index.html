@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="LA Canvas">
-<title>LA Canvas</title>
+<title>LA Canvas v43</title>
 <link rel="manifest" href="manifest.json">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -1166,6 +1166,7 @@ function onPointerDown(e){
   if(isPenOrMouse(e)&&n===1){
     // Commit any orphaned stroke from a missed pointerup/pointercancel
     if(drawing && curStroke && curStroke.pts.length>0){
+      console.log('[LA Canvas] orphan stroke committed on pointerdown, pts='+curStroke.pts.length);
       const orphan=curStroke;curStroke=null;drawing=false;
       if(snapOn){const snap=trySnapShape(orphan);commitStroke(snap?makeShapeStroke(snap,orphan):orphan);}
       else commitStroke(orphan);
@@ -1205,8 +1206,12 @@ function onPointerUp(e){
   if(drawing&&curStroke){
     const stroke=curStroke;curStroke=null;drawing=false;
     if(stroke.pts.length>0){
-      if(snapOn){const snap=trySnapShape(stroke);commitStroke(snap?makeShapeStroke(snap,stroke):stroke)}
-      else commitStroke(stroke);
+      console.log('[LA Canvas] pointerup: pts='+stroke.pts.length+' snapOn='+snapOn);
+      if(snapOn){
+        const snap=trySnapShape(stroke);
+        console.log('[LA Canvas] snap result:', snap?snap.type:'null');
+        commitStroke(snap?makeShapeStroke(snap,stroke):stroke);
+      } else commitStroke(stroke);
     } else render();
   }
   if(n===0){panning=false;panStart=null}
