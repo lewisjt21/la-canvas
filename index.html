@@ -279,6 +279,21 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;
   cursor:pointer;transition:opacity .13s;flex-shrink:0}
 #lesson-import-btn:hover{opacity:.88}
+#pdf-drop-area{
+  border:2px dashed rgba(255,255,255,.2);border-radius:10px;
+  padding:28px 20px;text-align:center;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  color:rgba(255,255,255,.4);font-size:13px;font-weight:500;
+  transition:border-color .15s;
+}
+#pdf-drop-area:hover{border-color:var(--yellow);color:rgba(255,255,255,.7)}
+.page-map-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.page-map-row:last-child{border-bottom:none}
+.page-map-thumb{width:60px;height:40px;border-radius:4px;object-fit:contain;background:#fff;flex-shrink:0}
+.page-map-label{font-size:12px;color:rgba(255,255,255,.7);flex:1}
+.page-map-select{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:white;border-radius:6px;padding:4px 8px;font-size:11px;font-family:'Inter',sans-serif;
+  cursor:pointer;-webkit-appearance:none}
 #lesson-progress{font-size:11px;color:rgba(255,255,255,.5);text-align:center;display:none}
 
 /* Section dropdowns */
@@ -500,19 +515,26 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 <div id="lesson-modal">
   <div id="lesson-box">
     <div id="lesson-box-head">
-      <h3>Import Lesson Content</h3>
-      <button id="lesson-close-btn" onclick="closeLessonModal()">×</button>
+      <h3>Import Lesson PDF</h3>
+      <button id="lesson-close-btn" onclick="closeLessonModal()">x</button>
     </div>
     <div id="lesson-box-body">
-      <p>Paste the full HTML of your lesson file below. The app will extract each slide section and make it available to drop onto the canvas.</p>
-      <textarea id="lesson-paste" placeholder="Paste lesson HTML here…" spellcheck="false"></textarea>
-      <div id="lesson-progress">Processing slides…</div>
-      <button id="lesson-import-btn" onclick="importLesson()">Import Lesson</button>
+      <p>Export your lesson file as a PDF, then select it here. Each page will be mapped to a section (Starter, I Do, We Do, You Do) based on its position.</p>
+      <div id="pdf-drop-area" onclick="document.getElementById('lesson-pdf-input').click()">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span>Tap to select PDF</span>
+        <span id="pdf-filename" style="font-size:11px;color:var(--yellow);margin-top:4px"></span>
+      </div>
+      <div id="lesson-section-map" style="display:none">
+        <p style="margin-bottom:8px;font-size:11px;color:rgba(255,255,255,.5)">Assign each PDF page to a section:</p>
+        <div id="page-map-list"></div>
+      </div>
+      <div id="lesson-progress" style="display:none">Rendering pages...</div>
+      <button id="lesson-import-btn" onclick="importLesson()" style="display:none">Import</button>
     </div>
   </div>
 </div>
-
-
+<input type="file" id="lesson-pdf-input" accept="application/pdf" style="display:none">
 
 <script>
 /* =======================================================
@@ -1441,202 +1463,147 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
    4. html2canvas screenshots it (same document   works perfectly)
    5. Div removed, dataURL stored
 ======================================================= */
+/* LESSON IMPORT -- PDF-based
+   Uses PDF.js to render each page of an exported lesson PDF to a canvas.
+   Pages are mapped to sections via a simple picker. Clean, reliable,
+   MathJax renders perfectly since it's already baked into the PDF.
+*/
 let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
 const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
 
+// PDF.js CDN
+const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfPages = [];       // rendered dataURLs for each PDF page
+let pdfPageCount = 0;
+
 function openLessonModal(){
   document.getElementById('lesson-modal').classList.add('active');
-  const ta=document.getElementById('lesson-paste');
-  ta.style.pointerEvents='auto';
-  setTimeout(()=>ta.focus(),100);
+  pdfPages = []; pdfPageCount = 0;
+  document.getElementById('pdf-filename').textContent = '';
+  document.getElementById('lesson-section-map').style.display = 'none';
+  document.getElementById('lesson-import-btn').style.display = 'none';
+  document.getElementById('lesson-progress').style.display = 'none';
+  document.getElementById('page-map-list').innerHTML = '';
 }
+
 function closeLessonModal(){
   document.getElementById('lesson-modal').classList.remove('active');
-  document.getElementById('lesson-paste').value='';
-  document.getElementById('lesson-progress').style.display='none';
 }
 
-/* -- Parse lesson HTML   extract CSS + slide elements -- */
-function parseLessonHTML(html){
-  const parser = new DOMParser();
-  const doc    = parser.parseFromString(html, 'text/html');
+// Wire up file input
+document.getElementById('lesson-pdf-input').addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  document.getElementById('pdf-filename').textContent = file.name;
+  document.getElementById('lesson-progress').style.display = 'block';
+  document.getElementById('lesson-progress').textContent = 'Loading PDF.js...';
 
-  // Extract all <style> blocks from the lesson
-  let lessonCSS = '';
-  doc.querySelectorAll('style').forEach(s=>{ lessonCSS += s.textContent + '\n'; });
+  // Load PDF.js
+  if(!window.pdfjsLib){
+    await loadScript(PDFJS_URL);
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  }
 
-  // Find slides via CORE_SLIDES script pattern
-  let coreSlides = [];
-  doc.querySelectorAll('script').forEach(s=>{
-    const entries=[...s.textContent.matchAll(/sec:\s*'([^']+)'[^}]*id:\s*'([^']+)'/g)];
-    entries.forEach(e=>{ if(SECTION_ORDER.includes(e[1])) coreSlides.push({sec:e[1],id:e[2]}); });
+  document.getElementById('lesson-progress').textContent = 'Rendering pages...';
+
+  // Read PDF
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  pdfPageCount = pdf.numPages;
+  pdfPages = [];
+
+  for(let i=1; i<=pdfPageCount; i++){
+    document.getElementById('lesson-progress').textContent = 'Rendering page ' + i + ' of ' + pdfPageCount + '...';
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({scale: 2.0});
+    const oc = document.createElement('canvas');
+    oc.width  = viewport.width;
+    oc.height = viewport.height;
+    await page.render({canvasContext: oc.getContext('2d'), viewport}).promise;
+    pdfPages.push(oc.toDataURL('image/png'));
+  }
+
+  document.getElementById('lesson-progress').style.display = 'none';
+  buildPageMapUI();
+  e.target.value = '';
+});
+
+function buildPageMapUI(){
+  const list = document.getElementById('page-map-list');
+  list.innerHTML = '';
+
+  // Smart defaults: guess section from page number
+  // Page 1 = Starter, last page = You Do, middle pages = I Do / We Do alternating
+  const defaults = guessDefaults(pdfPageCount);
+
+  pdfPages.forEach((src, i)=>{
+    const row = document.createElement('div');
+    row.className = 'page-map-row';
+
+    const thumb = document.createElement('img');
+    thumb.className = 'page-map-thumb';
+    thumb.src = src;
+
+    const label = document.createElement('span');
+    label.className = 'page-map-label';
+    label.textContent = 'Page ' + (i+1);
+
+    const sel = document.createElement('select');
+    sel.className = 'page-map-select';
+    sel.dataset.page = i;
+    // Options: one per section + Skip
+    ['Skip','Starter','I Do','We Do','You Do'].forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt;
+      if(opt === defaults[i]) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    row.appendChild(thumb);
+    row.appendChild(label);
+    row.appendChild(sel);
+    list.appendChild(row);
   });
 
-  // Remove duplicates (SLIDES and CORE_SLIDES may both match)
-  const seen=new Set();
-  coreSlides=coreSlides.filter(s=>{ const k=s.id; return seen.has(k)?false:seen.add(k); });
-
-  const results={'Starter':[],'I Do':[],'We Do':[],'You Do':[]};
-
-  if(coreSlides.length){
-    coreSlides.forEach(({sec,id})=>{
-      const el=doc.getElementById(id);
-      if(el && SECTION_ORDER.includes(sec)) results[sec].push({sec,id,html:el.outerHTML});
-    });
-  } else {
-    // Fallback: DOM scan
-    doc.querySelectorAll('[id^="slide-"]').forEach(el=>{
-      if(el.id==='slide-blank')return;
-      const pill =el.querySelector('.s-pill');
-      const ido  =el.querySelector('.ido-q');
-      const pair =el.querySelector('.pair-hdr.ex');
-      let sec=null;
-      if(pill)     sec=pill.textContent.trim();
-      else if(ido) sec='I Do';
-      else if(pair)sec='We Do';
-      if(sec&&SECTION_ORDER.includes(sec)) results[sec].push({sec,id:el.id,html:el.outerHTML});
-    });
-  }
-
-  return {css:lessonCSS, slides:results};
+  document.getElementById('lesson-section-map').style.display = 'block';
+  document.getElementById('lesson-import-btn').style.display = 'block';
 }
 
-/* -- Render a single slide via offscreen div in main document -- */
-async function renderSlideViaDiv(slideHTML, lessonCSS){
-  // Load html2canvas if needed
-  if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-
-  // Create a scoped wrapper div, positioned off-screen but visible (required for html2canvas)
-  const wrapper = document.createElement('div');
-  wrapper.id    = 'lesson-render-wrap';
-  wrapper.style.cssText = [
-    'position:fixed',
-    'left:0','top:0',
-    'width:1200px','height:800px',
-    'overflow:hidden',
-    'z-index:-1',         // behind everything
-    'pointer-events:none',
-    'background:#f4f6fb',
-    'font-family:Inter,sans-serif'
-  ].join(';');
-
-  // Inject lesson CSS scoped to this wrapper
-  const styleEl = document.createElement('style');
-  // Prefix all CSS rules with #lesson-render-wrap to scope them
-  // Simple approach: wrap in a layer and let cascade handle it
-  // Scope lesson CSS safely   use string operations to avoid regex escaping issues
-  let scopedCSS = lessonCSS;
-  // Strip rules that break layout when outside the lesson context
-  const stripPatterns = ['html,body{','html, body{','#deck{','#deck {','position:fixed','position: fixed'];
-  stripPatterns.forEach(p=>{ while(scopedCSS.includes(p)) scopedCSS=scopedCSS.replace(p, '/*'+p+'*/'); });
-  scopedCSS += [
-    '',
-    '#lesson-render-wrap .slide { display:flex !important; flex-direction:column !important; position:relative !important; width:1200px !important; min-height:780px !important; }',
-    '#lesson-render-wrap .slide-area { position:relative !important; }',
-    '#lesson-render-wrap { font-family:"Inter",sans-serif !important; }'
-  ].join('\n');
-  styleEl.textContent = scopedCSS;
-
-  document.head.appendChild(styleEl);
-
-  // Inject the slide HTML into the wrapper
-  wrapper.innerHTML = slideHTML;
-  // Make the injected slide visible and sized
-  const slideEl = wrapper.firstElementChild;
-  if(slideEl){
-    slideEl.style.cssText += ';display:flex;flex-direction:column;width:1200px;min-height:780px;position:relative;';
-    slideEl.classList.add('active');
-  }
-
-  document.body.appendChild(wrapper);
-
-  // Let browser lay out
-  await new Promise(r=>setTimeout(r, 100));
-
-  // Run MathJax on the wrapper
-  if(window.MathJax && MathJax.typesetPromise){
-    await MathJax.typesetPromise([wrapper]);
-  }
-
-  // Wait for MathJax to paint
-  await new Promise(r=>setTimeout(r, 400));
-
-  // Screenshot with html2canvas
-  const shotCanvas = await html2canvas(wrapper, {
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: '#f4f6fb',
-    logging: false,
-    width: 1200,
-    height: wrapper.scrollHeight || 800,
-    windowWidth: 1200,
-    windowHeight: 800
-  });
-
-  const dataUrl = shotCanvas.toDataURL('image/png');
-
-  // Clean up
-  document.body.removeChild(wrapper);
-  document.head.removeChild(styleEl);
-
-  return dataUrl;
+function guessDefaults(n){
+  // Simple heuristic for typical lesson structure
+  if(n === 0) return [];
+  if(n === 1) return ['Starter'];
+  if(n === 2) return ['Starter','You Do'];
+  if(n === 3) return ['Starter','I Do','You Do'];
+  if(n === 4) return ['Starter','I Do','We Do','You Do'];
+  // More pages: Starter, then I Do/We Do alternating, then You Do last
+  const d = ['Starter'];
+  for(let i=1; i<n-1; i++) d.push(i%2===1?'I Do':'We Do');
+  d.push('You Do');
+  return d;
 }
 
-/* -- Main import function -- */
 async function importLesson(){
-  const html=document.getElementById('lesson-paste').value.trim();
-  if(!html){showToast('Please paste lesson HTML first');return;}
+  const sections = {};
+  const rows = document.querySelectorAll('.page-map-row');
+  rows.forEach(row=>{
+    const sel = row.querySelector('.page-map-select');
+    const sec = sel.value;
+    if(sec === 'Skip') return;
+    if(!sections[sec]) sections[sec] = [];
+    sections[sec].push(pdfPages[parseInt(sel.dataset.page)]);
+  });
 
-  const progressEl=document.getElementById('lesson-progress');
-  const importBtn =document.getElementById('lesson-import-btn');
-  progressEl.style.display='block';
-  progressEl.textContent='Parsing lesson...';
-  importBtn.disabled=true;
+  const total = Object.values(sections).reduce((a,b)=>a+b.length,0);
+  if(!total){ showToast('No pages assigned to any section'); return; }
 
-  try{
-    const {css, slides} = parseLessonHTML(html);
-    const sections = {};
-    let total=0;
-    SECTION_ORDER.forEach(s=>{ total+=(slides[s]||[]).length; });
-
-    if(!total){
-      showToast('No slides found   check the lesson HTML');
-      importBtn.disabled=false; return;
-    }
-
-    let done=0;
-    for(const sec of SECTION_ORDER){
-      const slideList=slides[sec]||[];
-      if(!slideList.length) continue;
-      sections[sec]=[];
-      for(const slide of slideList){
-        progressEl.textContent=`Rendering ${sec} ${sections[sec].length+1} of ${slideList.length}...`;
-        await new Promise(r=>setTimeout(r,0)); // yield to UI
-        try{
-          const dataUrl = await renderSlideViaDiv(slide.html, css);
-          sections[sec].push(dataUrl);
-        } catch(e){
-          console.warn('Render failed for',slide.id,e);
-        }
-        done++;
-      }
-    }
-
-    lessonSections=sections;
-    buildSectionDropdowns();
-    closeLessonModal();
-    showToast('Lesson imported   use section buttons to add slides');
-  } catch(e){
-    console.error('Import error:',e);
-    showToast('Import failed   check console');
-  }
-  importBtn.disabled=false;
-}
-
-function resetIframe(){
-  // Kept for compatibility   no longer used
+  lessonSections = sections;
+  buildSectionDropdowns();
+  closeLessonModal();
+  showToast('Lesson imported -- use section buttons to add slides');
 }
 
 
