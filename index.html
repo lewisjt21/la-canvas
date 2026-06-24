@@ -296,9 +296,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .sec-drop-item{padding:8px 12px;font-size:12px;font-weight:500;color:white;
   cursor:pointer;border-radius:5px;transition:background .12s;white-space:nowrap}
 .sec-drop-item:hover{background:rgba(255,255,255,.12)}
-/* Hidden iframe for rendering lesson HTML */
-#lesson-iframe{position:fixed;left:-9999px;top:0;width:1200px;height:800px;border:none;
-  pointer-events:none;z-index:-1;visibility:hidden}
+
 </style>
 </head>
 <body>
@@ -514,22 +512,20 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Hidden iframe for rendering lesson slides -->
-<iframe id="lesson-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
 
 
 <script>
-/* ═══════════════════════════════════════════════════════
-   LA CANVAS — Folder file system
+/* =======================================================
+   LA CANVAS   Folder file system
    DB stores:
      folders: { id, name, parentId, created }
-              parentId=null → class level
-              parentId=someId → topic level (child of class)
+              parentId=null = class level
+              parentId=someId = topic level (child of class)
      boards:  { id, name, folderId, created, updated, thumb, bgColour, pages }
-              folderId=null → Unassigned
-═══════════════════════════════════════════════════════ */
+              folderId=null = Unassigned
+======================================================= */
 
-/* ── INDEXEDDB ── */
+/* -- INDEXEDDB -- */
 const DB_NAME='la-canvas-db', DB_VER=2, BOARDS='boards', FOLDERS='folders';
 let db=null;
 
@@ -565,7 +561,7 @@ function dbPut(store,rec){return new Promise((r,j)=>{const q=stx(store,'readwrit
 function dbDelete(store,id){return new Promise((r,j)=>{const q=stx(store,'readwrite').delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
 function dbGetByIndex(store,index,val){
   return new Promise((r,j)=>{
-    // IndexedDB cannot query for null keys via index — fall back to getAll+filter
+    // IndexedDB cannot query for null keys via index   fall back to getAll+filter
     if(val===null||val===undefined){
       const q=stx(store,'readonly').getAll();
       q.onsuccess=()=>r(q.result.filter(rec=>rec[index]===null||rec[index]===undefined));
@@ -580,7 +576,7 @@ function dbGetAll(store){return new Promise((r,j)=>{const q=stx(store,'readonly'
 
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
 
-/* ── NAVIGATION STATE ── */
+/* -- NAVIGATION STATE -- */
 // navStack: [] = root, [classId] = inside class folder, [classId, topicId] = topic (boards visible)
 let navStack=[];
 
@@ -637,14 +633,14 @@ async function renderHome(){
     const names=await Promise.all(navStack.map(id=>dbGet(FOLDERS,id).then(f=>f?f.name:'?')));
     titleEl.textContent=names[names.length-1];
     subEl.style.display=names.length>1?'block':'none';
-    subEl.textContent=names.slice(0,-1).join(' › ');
+    subEl.textContent=names.slice(0,-1).join('   ');
   }
 
   // What to show: if depth<2 show subfolders + (at root) also Unassigned; if depth=2 show boards
   const depth=navStack.length;
   const parentId=depth>0?navStack[depth-1]:null;
 
-  // Show/hide new folder button — only available at depth 0 (class) and depth 1 (topic)
+  // Show/hide new folder button   only available at depth 0 (class) and depth 1 (topic)
   document.getElementById('new-folder-btn').style.display=depth<2?'flex':'none';
 
   let hasContent=false;
@@ -703,14 +699,14 @@ async function renderHome(){
   }
 }
 
-/* ── FOLDER CARDS ── */
+/* -- FOLDER CARDS -- */
 function buildFolderCard(folder){
   const card=document.createElement('div');card.className='folder-card';
   card.innerHTML=`
-    <div class="folder-icon">${navStack.length===0?'🗂️':'📁'}</div>
+    <div class="folder-icon">${navStack.length===0?'  ':' '}</div>
     <div class="folder-info">
       <div class="folder-name">${escHtml(folder.name)}</div>
-      <div class="folder-count" id="fc-${folder.id}">…</div>
+      <div class="folder-count" id="fc-${folder.id}">...</div>
     </div>`;
   card.addEventListener('click',()=>navInto(folder.id));
   // Long press for folder options
@@ -737,7 +733,7 @@ async function countFolderContents(folderId){
   return subs.length+boards.length;
 }
 
-/* ── BOARD CARDS ── */
+/* -- BOARD CARDS -- */
 function buildBoardCard(board){
   const card=document.createElement('div');card.className='board-card';
   const thumb=document.createElement('canvas');thumb.className='bc-thumb';thumb.width=320;thumb.height=200;
@@ -768,7 +764,7 @@ function formatDate(ts){
   if(dy<7)return dy+'d ago';return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 }
 
-/* ── CONTEXT MENUS ── */
+/* -- CONTEXT MENUS -- */
 let ctxTargetBoard=null,ctxTargetFolder=null;
 
 function showBoardCtx(board,e){
@@ -809,7 +805,7 @@ function closeCtxOnOutside(e){
   if(!menus.some(id=>document.getElementById(id).contains(e.target)))closeCtxMenu();
 }
 
-/* ── BOARD CONTEXT ACTIONS ── */
+/* -- BOARD CONTEXT ACTIONS -- */
 function renameBoard(){
   if(!ctxTargetBoard)return;closeCtxMenu();
   const name=prompt('Board name:',ctxTargetBoard.name||'Untitled Board');
@@ -826,24 +822,24 @@ function promptDeleteBoard(){
   });
 }
 
-/* ── MOVE SHEET ── */
+/* -- MOVE SHEET -- */
 let movingBoard=null;
 async function openMoveSheet(){
   movingBoard=ctxTargetBoard;closeCtxMenu();
   const list=document.getElementById('move-list');list.innerHTML='';
   // Option: Unassigned
-  const ua=buildMoveItem('📥','Unassigned',null,movingBoard.folderId===null);
+  const ua=buildMoveItem(' ','Unassigned',null,movingBoard.folderId===null);
   list.appendChild(ua);
-  // Build tree: class folders → topic folders
+  // Build tree: class folders -> topic folders
   const classFolders=await dbGetByIndex(FOLDERS,'parentId',null);
   classFolders.sort((a,b)=>a.name.localeCompare(b.name));
   for(const cf of classFolders){
-    const cItem=buildMoveItem('🗂️',cf.name,null,false,true);
+    const cItem=buildMoveItem('  ',cf.name,null,false,true);
     list.appendChild(cItem);
     const topics=await dbGetByIndex(FOLDERS,'parentId',cf.id);
     topics.sort((a,b)=>a.name.localeCompare(b.name));
     topics.forEach(t=>{
-      const tItem=buildMoveItem('📁',t.name,t.id,movingBoard.folderId===t.id,false,true);
+      const tItem=buildMoveItem(' ',t.name,t.id,movingBoard.folderId===t.id,false,true);
       list.appendChild(tItem);
     });
   }
@@ -866,7 +862,7 @@ function buildMoveItem(icon,name,folderId,selected,isHeader=false,indented=false
 
 function closeMoveSheet(){document.getElementById('move-sheet').classList.remove('active');movingBoard=null}
 
-/* ── FOLDER ACTIONS ── */
+/* -- FOLDER ACTIONS -- */
 let folderSheetMode='create'; // 'create' or 'rename'
 
 function showNewFolder(){
@@ -924,7 +920,7 @@ async function promptDeleteFolder(){
     showWarn(
       'Folder is not empty',
       `"${escHtml(folder.name)}" contains ${count} item${count!==1?'s':''}. Delete the contents first before deleting this folder.`,
-      null // no confirm action — just informational
+      null // no confirm action   just informational
     );
     document.getElementById('warn-ok').style.display='none';
     document.getElementById('warn-cancel').textContent='OK';
@@ -943,7 +939,7 @@ async function promptDeleteFolder(){
   document.getElementById('warn-cancel').textContent='Cancel';
 }
 
-/* ── WARN DIALOG ── */
+/* -- WARN DIALOG -- */
 let warnCallback=null;
 function showWarn(title,msg,cb){
   warnCallback=cb;
@@ -953,7 +949,7 @@ function showWarn(title,msg,cb){
   document.getElementById('warn-dialog').classList.add('active');
 }
 
-/* ── BOARD OPERATIONS ── */
+/* -- BOARD OPERATIONS -- */
 let currentBoardId=null,boardCreated=Date.now(),saveTimer=null;
 let bgColour='#f7f9fd';
 
@@ -1010,7 +1006,7 @@ async function newBoard(){
   // Auto-name: "ClassName TopicName Lesson N"
   let boardName='Untitled Board';
   if(navStack.length>=2){
-    // We're inside a topic folder — build name from class + topic + lesson number
+    // We're inside a topic folder   build name from class + topic + lesson number
     const [classFolder, topicFolder] = await Promise.all([
       dbGet(FOLDERS, navStack[0]),
       dbGet(FOLDERS, navStack[1])
@@ -1021,7 +1017,7 @@ async function newBoard(){
       boardName = `${classFolder.name} ${topicFolder.name} Lesson ${lessonNum}`;
     }
   } else if(navStack.length===1){
-    // Inside a class folder but no topic — use class name + lesson number
+    // Inside a class folder but no topic   use class name + lesson number
     const classFolder = await dbGet(FOLDERS, navStack[0]);
     if(classFolder){
       const existing = await dbGetByIndex(BOARDS,'folderId',folderId);
@@ -1053,7 +1049,7 @@ function loadBoardIntoCanvas(board){
   buildSectionDropdowns();
   undoStacks=pageData.map(()=>[]);redoStacks=pageData.map(()=>[]);curPage=0;
   const title=board.name||'Untitled Board';
-  document.getElementById('app-title').textContent=title;document.title=title+' — LA Canvas';
+  document.getElementById('app-title').textContent=title;document.title=title+'   LA Canvas';
   scale=1;offsetX=0;offsetY=0;
   document.getElementById('home').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -1064,7 +1060,7 @@ function loadBoardIntoCanvas(board){
 
 function goHome(){showHome()}
 
-/* ── CANVAS ENGINE ── */
+/* -- CANVAS ENGINE -- */
 const canvas=document.getElementById('main-canvas');
 const ctx=canvas?canvas.getContext('2d'):null;
 let drawing=false,eraseOn=false,penCol='#1a1a2e',penSz=3;
@@ -1201,7 +1197,7 @@ canvas.addEventListener('wheel',e=>{
   applyZoom(scale*(e.deltaY<0?1.1:.9),e.clientX-rect.left,e.clientY-rect.top);
 },{passive:false});
 
-/* ── UNDO/REDO ── */
+/* -- UNDO/REDO -- */
 function syncUndoRedo(){
   const u=document.getElementById('undo-fab'),r=document.getElementById('redo-fab');
   if(u)u.disabled=!undoStacks[curPage]||!undoStacks[curPage].length;
@@ -1228,7 +1224,7 @@ function redo(){
   render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
 }
 
-/* ── IMAGE INSERT ── */
+/* -- IMAGE INSERT -- */
 const imgInput=document.getElementById('img-input');
 imgInput.addEventListener('change',e=>{
   const file=e.target.files[0];if(!file)return;
@@ -1256,7 +1252,7 @@ imgInput.addEventListener('change',e=>{
 });
 function loadImgEl(imgObj){const el=new Image();el.src=imgObj.src;el.onload=()=>render();imgObj._el=el}
 
-/* ── BACKGROUND COLOUR ── */
+/* -- BACKGROUND COLOUR -- */
 function applyBgColour(col,save=true){
   bgColour=col;document.getElementById('canvas-wrap').style.background=col;
   document.documentElement.style.setProperty('--bg-colour',col);
@@ -1264,7 +1260,7 @@ function applyBgColour(col,save=true){
   render();if(save)scheduleAutoSave();
 }
 
-/* ── SHAPE RECOGNITION ── */
+/* -- SHAPE RECOGNITION -- */
 function toggleSnap(){snapOn=!snapOn;document.getElementById('snap-fab').classList.toggle('active',snapOn);showToast(snapOn?'Shape recognition on':'Shape recognition off')}
 function trySnapShape(stroke){
   const pts=stroke.pts;if(pts.length<6||stroke.erase)return null;
@@ -1294,7 +1290,7 @@ function makeShapeStroke(shape,orig){
   return base;
 }
 
-/* ── PAGES ── */
+/* -- PAGES -- */
 function addPage(){
   pageData.push({strokes:[],images:[]});undoStacks.push([]);redoStacks.push([]);
   curPage=pageData.length-1;buildPageStrip();resetView();showToast('Page '+(curPage+1)+' added');scheduleAutoSave();
@@ -1317,7 +1313,7 @@ function buildPageStrip(){
     const thumb=document.createElement('div');thumb.className='page-thumb'+(i===curPage?' active':'');
     const tc=document.createElement('canvas');tc.width=120;tc.height=72;thumb.appendChild(tc);
     const num=document.createElement('span');num.className='pg-num';num.textContent=i+1;thumb.appendChild(num);
-    if(pageData.length>1){const del=document.createElement('button');del.className='thumb-del';del.textContent='×';del.addEventListener('pointerup',e=>{e.stopPropagation();deletePage(i)});thumb.appendChild(del)}
+    if(pageData.length>1){const del=document.createElement('button');del.className='thumb-del';del.textContent=' ';del.addEventListener('pointerup',e=>{e.stopPropagation();deletePage(i)});thumb.appendChild(del)}
     thumb.addEventListener('click',()=>switchPage(i));
     strip.insertBefore(thumb,addBtn);renderThumb(i,tc);
   });
@@ -1354,23 +1350,23 @@ function clearPage(){
   pageData[curPage]={strokes:[],images:[]};render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
 }
 
-/* ── TITLE EDIT ── */
+/* -- TITLE EDIT -- */
 function editTitle(){
   const cur=document.getElementById('app-title').textContent;
   const name=prompt('Board name:',cur);
-  if(name&&name.trim()){const n=name.trim();document.getElementById('app-title').textContent=n;document.title=n+' — LA Canvas';scheduleAutoSave()}
+  if(name&&name.trim()){const n=name.trim();document.getElementById('app-title').textContent=n;document.title=n+'   LA Canvas';scheduleAutoSave()}
 }
 
-/* ── PDF EXPORT ── */
+/* -- PDF EXPORT -- */
 async function exportPDF(){
   const overlay=document.getElementById('pdf-overlay'),statusEl=document.getElementById('pdf-status');
-  overlay.classList.add('active');statusEl.textContent='Loading libraries…';
+  overlay.classList.add('active');statusEl.textContent='Loading libraries...';
   if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   const{jsPDF}=window.jspdf;
   const pW=297,pH=210,PDF_W=3508,PDF_H=2480,pad=60;
   const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   for(let pi=0;pi<pageData.length;pi++){
-    statusEl.textContent=`Exporting page ${pi+1} of ${pageData.length}…`;
+    statusEl.textContent=`Exporting page ${pi+1} of ${pageData.length}...`;
     const pg=pageData[pi];
     let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
     for(const s of pg.strokes)for(const p of s.pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
@@ -1400,7 +1396,7 @@ async function exportPDF(){
 
 function loadScript(src){return new Promise((r,j)=>{if(document.querySelector(`script[src="${src}"]`)){r();return}const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
 
-/* ── TOOL CONTROLS ── */
+/* -- TOOL CONTROLS -- */
 function togglePalette(){_paletteOn=!_paletteOn;document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn)}
 function toggleErase(){eraseOn=!eraseOn;document.getElementById('erase-btn').classList.toggle('erase-on',eraseOn)}
 function setCol(el){document.querySelectorAll('.csw').forEach(s=>s.classList.remove('active'));el.classList.add('active');penCol=el.dataset.c;eraseOn=false;document.getElementById('erase-btn').classList.remove('erase-on');document.getElementById('pen-pill').style.setProperty('--cur-col',penCol)}
@@ -1432,32 +1428,22 @@ penWrap.addEventListener('pointerup',e=>{
 });
 document.getElementById('pen-pill').style.setProperty('--cur-col',penCol);
 
-/* ── TOAST ── */
+/* -- TOAST -- */
 let toastTimer;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200)}
 
 
-/* ═══════════════════════════════════════════════════════
-   LESSON IMPORT — Direct canvas rendering
-   Parses lesson HTML with DOMParser, extracts slide content,
-   renders to offscreen canvas using MathJax in parent window.
-   No iframe, no html2canvas.
-═══════════════════════════════════════════════════════ */
+/* =======================================================
+   LESSON IMPORT   Offscreen div + MathJax + html2canvas
+   1. DOMParser extracts slide HTML and lesson CSS
+   2. Each slide is cloned into a hidden div in the MAIN document
+   3. MathJax typesets it (same window   no cross-origin)
+   4. html2canvas screenshots it (same document   works perfectly)
+   5. Div removed, dataURL stored
+======================================================= */
 let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
 const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
-
-// Canvas render constants
-const SLIDE_W = 1400, SLIDE_H = 900;
-const NAVY    = '#1F3864';
-const YELLOW  = '#FFC425';
-const OFF     = '#f4f6fb';
-const TEXT    = '#1a1a2e';
-const RULE    = '#dde1ec';
-const WHITE   = '#ffffff';
-const GREEN   = '#1a6b3a';
-const GBG     = '#edfbf2';
-const DOT_COL = 'rgba(31,56,100,0.12)';
 
 function openLessonModal(){
   document.getElementById('lesson-modal').classList.add('active');
@@ -1471,312 +1457,134 @@ function closeLessonModal(){
   document.getElementById('lesson-progress').style.display='none';
 }
 
-/* ── Parse the pasted HTML and extract slides ── */
+/* -- Parse lesson HTML   extract CSS + slide elements -- */
 function parseLessonHTML(html){
-  const parser  = new DOMParser();
-  const doc     = parser.parseFromString(html, 'text/html');
-  const results = { 'Starter':[], 'I Do':[], 'We Do':[], 'You Do':[] };
+  const parser = new DOMParser();
+  const doc    = parser.parseFromString(html, 'text/html');
 
-  // Find CORE_SLIDES from the script text
+  // Extract all <style> blocks from the lesson
+  let lessonCSS = '';
+  doc.querySelectorAll('style').forEach(s=>{ lessonCSS += s.textContent + '\n'; });
+
+  // Find slides via CORE_SLIDES script pattern
   let coreSlides = [];
   doc.querySelectorAll('script').forEach(s=>{
-    const m = s.textContent.match(/const CORE_SLIDES\s*=\s*(\[[\s\S]*?\]);/);
-    if(m){
-      try{
-        // Extract sec and id pairs safely
-        const entries = [...m[1].matchAll(/\{[^}]*sec:\s*'([^']+)'[^}]*id:\s*'([^']+)'/g)];
-        entries.forEach(e=>coreSlides.push({sec:e[1], id:e[2]}));
-      }catch(e){}
-    }
+    const entries=[...s.textContent.matchAll(/sec:\s*'([^']+)'[^}]*id:\s*'([^']+)'/g)];
+    entries.forEach(e=>{ if(SECTION_ORDER.includes(e[1])) coreSlides.push({sec:e[1],id:e[2]}); });
   });
 
-  // Also check SLIDES array definition
-  if(!coreSlides.length){
-    doc.querySelectorAll('script').forEach(s=>{
-      const entries=[...s.textContent.matchAll(/sec:\s*'([^']+)'[^}]*id:\s*'([^']+)'/g)];
-      entries.forEach(e=>{
-        if(SECTION_ORDER.includes(e[1]))coreSlides.push({sec:e[1],id:e[2]});
-      });
+  // Remove duplicates (SLIDES and CORE_SLIDES may both match)
+  const seen=new Set();
+  coreSlides=coreSlides.filter(s=>{ const k=s.id; return seen.has(k)?false:seen.add(k); });
+
+  const results={'Starter':[],'I Do':[],'We Do':[],'You Do':[]};
+
+  if(coreSlides.length){
+    coreSlides.forEach(({sec,id})=>{
+      const el=doc.getElementById(id);
+      if(el && SECTION_ORDER.includes(sec)) results[sec].push({sec,id,html:el.outerHTML});
     });
-  }
-
-  // For each slide in CORE_SLIDES, grab the element
-  coreSlides.forEach(({sec,id})=>{
-    if(!SECTION_ORDER.includes(sec))return;
-    const el=doc.getElementById(id);
-    if(!el)return;
-    results[sec].push({sec, id, el});
-  });
-
-  // Fallback: scan slide elements directly
-  if(!coreSlides.length){
+  } else {
+    // Fallback: DOM scan
     doc.querySelectorAll('[id^="slide-"]').forEach(el=>{
       if(el.id==='slide-blank')return;
-      const pill=el.querySelector('.s-pill');
-      const ido =el.querySelector('.ido-q');
-      const pair=el.querySelector('.pair-hdr.ex');
+      const pill =el.querySelector('.s-pill');
+      const ido  =el.querySelector('.ido-q');
+      const pair =el.querySelector('.pair-hdr.ex');
       let sec=null;
-      if(pill)      sec=pill.textContent.trim();
-      else if(ido)  sec='I Do';
-      else if(pair) sec='We Do';
-      if(sec&&SECTION_ORDER.includes(sec))results[sec].push({sec,id:el.id,el});
+      if(pill)     sec=pill.textContent.trim();
+      else if(ido) sec='I Do';
+      else if(pair)sec='We Do';
+      if(sec&&SECTION_ORDER.includes(sec)) results[sec].push({sec,id:el.id,html:el.outerHTML});
     });
   }
 
-  return results;
+  return {css:lessonCSS, slides:results};
 }
 
-/* ── Render a slide element to an offscreen canvas ── */
-async function renderSlideToCanvas(slideEl, sec){
-  const oc = document.createElement('canvas');
-  oc.width  = SLIDE_W;
-  oc.height = SLIDE_H;
-  const ctx2 = oc.getContext('2d');
+/* -- Render a single slide via offscreen div in main document -- */
+async function renderSlideViaDiv(slideHTML, lessonCSS){
+  // Load html2canvas if needed
+  if(!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
 
-  // Background
-  const isDot = slideEl.classList.contains('bg-dot');
-  ctx2.fillStyle = isDot ? '#f7f9fd' : OFF;
-  ctx2.fillRect(0,0,SLIDE_W,SLIDE_H);
+  // Create a scoped wrapper div, positioned off-screen but visible (required for html2canvas)
+  const wrapper = document.createElement('div');
+  wrapper.id    = 'lesson-render-wrap';
+  wrapper.style.cssText = [
+    'position:fixed',
+    'left:0','top:0',
+    'width:1200px','height:800px',
+    'overflow:hidden',
+    'z-index:-1',         // behind everything
+    'pointer-events:none',
+    'background:#f4f6fb',
+    'font-family:Inter,sans-serif'
+  ].join(';');
 
-  // Dot paper for dot slides
-  if(isDot){
-    ctx2.fillStyle = DOT_COL;
-    const sp = 22;
-    for(let x=0;x<SLIDE_W;x+=sp)
-      for(let y=0;y<SLIDE_H;y+=sp){
-        ctx2.beginPath();ctx2.arc(x,y,1.3,0,Math.PI*2);ctx2.fill();
-      }
+  // Inject lesson CSS scoped to this wrapper
+  const styleEl = document.createElement('style');
+  // Prefix all CSS rules with #lesson-render-wrap to scope them
+  // Simple approach: wrap in a layer and let cascade handle it
+  // Scope lesson CSS safely   use string operations to avoid regex escaping issues
+  let scopedCSS = lessonCSS;
+  // Strip rules that break layout when outside the lesson context
+  const stripPatterns = ['html,body{','html, body{','#deck{','#deck {','position:fixed','position: fixed'];
+  stripPatterns.forEach(p=>{ while(scopedCSS.includes(p)) scopedCSS=scopedCSS.replace(p, '/*'+p+'*/'); });
+  scopedCSS += [
+    '',
+    '#lesson-render-wrap .slide { display:flex !important; flex-direction:column !important; position:relative !important; width:1200px !important; min-height:780px !important; }',
+    '#lesson-render-wrap .slide-area { position:relative !important; }',
+    '#lesson-render-wrap { font-family:"Inter",sans-serif !important; }'
+  ].join('\n');
+  styleEl.textContent = scopedCSS;
+
+  document.head.appendChild(styleEl);
+
+  // Inject the slide HTML into the wrapper
+  wrapper.innerHTML = slideHTML;
+  // Make the injected slide visible and sized
+  const slideEl = wrapper.firstElementChild;
+  if(slideEl){
+    slideEl.style.cssText += ';display:flex;flex-direction:column;width:1200px;min-height:780px;position:relative;';
+    slideEl.classList.add('active');
   }
 
-  // Route to section-specific renderer
-  if(sec==='Starter')      await renderStarter(ctx2, slideEl);
-  else if(sec==='I Do')    await renderIDo(ctx2, slideEl);
-  else if(sec==='We Do')   await renderWeDo(ctx2, slideEl);
-  else if(sec==='You Do')  await renderYouDo(ctx2, slideEl);
+  document.body.appendChild(wrapper);
 
-  return oc;
-}
+  // Let browser lay out
+  await new Promise(r=>setTimeout(r, 100));
 
-/* ── Text rendering helpers ── */
-function setFont(ctx2, size, weight='400', family='Inter,sans-serif'){
-  ctx2.font = `${weight} ${size}px ${family}`;
-}
-
-// Wrap and draw text, returns new y position
-function drawWrappedText(ctx2, text, x, y, maxW, lineH){
-  // Strip HTML tags for plain text rendering
-  const plain = text.replace(/<br\s*\/?>/gi,' ').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#9654;/g,'▶').replace(/&#10003;/g,'✓').trim();
-  const words = plain.split(' ').filter(w=>w.length);
-  let line='', lineY=y;
-  for(const word of words){
-    const test=line?line+' '+word:word;
-    if(ctx2.measureText(test).width>maxW&&line){
-      ctx2.fillText(line, x, lineY);
-      line=word; lineY+=lineH;
-    } else line=test;
+  // Run MathJax on the wrapper
+  if(window.MathJax && MathJax.typesetPromise){
+    await MathJax.typesetPromise([wrapper]);
   }
-  if(line){ctx2.fillText(line,x,lineY);}
-  return lineY+lineH;
-}
 
-// Extract text content from an element, replacing \(...\) with the LaTeX source
-function extractText(el){
-  if(!el)return'';
-  let html=el.innerHTML||'';
-  // Replace \( ... \) inline math with readable form
-  // Strip LaTeX delimiters simply — replace \( \) \[ \] with nothing
-  html=html.split('\\(').join('').split('\\)').join('').split('\\[').join('').split('\\]').join('');
-  return html;
-}
+  // Wait for MathJax to paint
+  await new Promise(r=>setTimeout(r, 400));
 
-function getTextContent(el){
-  if(!el)return'';
-  const clone=el.cloneNode(true);
-  // Replace <br> with space
-  clone.querySelectorAll('br').forEach(br=>br.replaceWith(' '));
-  // Keep strong text
-  return clone.textContent.replace(/\s+/g,' ').trim();
-}
-
-/* ── SLIDE BAR ── */
-function drawSlideBar(ctx2, sec, title){
-  // Pill
-  const pillW=70, pillH=22, pillX=28, pillY=18;
-  ctx2.fillStyle=NAVY;
-  roundRect(ctx2, pillX, pillY, pillW, pillH, 11);
-  ctx2.fill();
-  ctx2.fillStyle=YELLOW;
-  setFont(ctx2,11,'700');
-  ctx2.textAlign='center';
-  ctx2.fillText(sec.toUpperCase(), pillX+pillW/2, pillY+14);
-  // Title
-  ctx2.fillStyle=NAVY;
-  setFont(ctx2,22,'700');
-  ctx2.textAlign='left';
-  ctx2.fillText(title||'', pillX+pillW+14, pillY+16);
-  // Rule
-  ctx2.strokeStyle=RULE;ctx2.lineWidth=1.5;
-  ctx2.beginPath();ctx2.moveTo(0,46);ctx2.lineTo(SLIDE_W,46);ctx2.stroke();
-}
-
-function roundRect(ctx2,x,y,w,h,r){
-  ctx2.beginPath();ctx2.moveTo(x+r,y);ctx2.lineTo(x+w-r,y);
-  ctx2.arcTo(x+w,y,x+w,y+r,r);ctx2.lineTo(x+w,y+h-r);
-  ctx2.arcTo(x+w,y+h,x+w-r,y+h,r);ctx2.lineTo(x+r,y+h);
-  ctx2.arcTo(x,y+h,x,y+h-r,r);ctx2.lineTo(x,y+r);
-  ctx2.arcTo(x,y,x+r,y,r);ctx2.closePath();
-}
-
-/* ── STARTER renderer ── */
-async function renderStarter(ctx2, el){
-  const titleEl=el.querySelector('.s-title');
-  drawSlideBar(ctx2,'Starter', titleEl?getTextContent(titleEl):'Revision');
-
-  const cells=[...el.querySelectorAll('.fcell')];
-  const cols=2, rows=Math.ceil(cells.length/cols);
-  const cellW=SLIDE_W/cols, cellH=(SLIDE_H-48)/rows;
-
-  cells.forEach((cell,i)=>{
-    const col=i%cols, row=Math.floor(i/cols);
-    const cx=col*cellW, cy=48+row*cellH;
-    // Cell border
-    ctx2.strokeStyle=RULE;ctx2.lineWidth=1.5;
-    if(col<cols-1){ctx2.beginPath();ctx2.moveTo(cx+cellW,cy);ctx2.lineTo(cx+cellW,cy+cellH);ctx2.stroke();}
-    if(row<rows-1){ctx2.beginPath();ctx2.moveTo(cx,cy+cellH);ctx2.lineTo(cx+cellW,cy+cellH);ctx2.stroke();}
-
-    ctx2.fillStyle=WHITE;ctx2.fillRect(cx,cy,cellW,cellH);
-
-    // Q number badge
-    const qNum=cell.querySelector('.q-num');
-    const qType=cell.querySelector('.q-type');
-    if(qNum){
-      ctx2.fillStyle=NAVY;
-      ctx2.beginPath();ctx2.arc(cx+28,cy+28,12,0,Math.PI*2);ctx2.fill();
-      ctx2.fillStyle=YELLOW;setFont(ctx2,11,'700');ctx2.textAlign='center';
-      ctx2.fillText(getTextContent(qNum),cx+28,cy+32);
-    }
-    if(qType){
-      ctx2.fillStyle='rgba(31,56,100,0.4)';setFont(ctx2,10,'700');ctx2.textAlign='left';
-      ctx2.fillText(getTextContent(qType).toUpperCase(),cx+46,cy+30);
-    }
-    // Question text
-    const qText=cell.querySelector('.q-text');
-    if(qText){
-      ctx2.fillStyle=TEXT;setFont(ctx2,18,'400');ctx2.textAlign='left';
-      drawWrappedText(ctx2,getTextContent(qText),cx+20,cy+60,cellW-40,28);
-    }
+  // Screenshot with html2canvas
+  const shotCanvas = await html2canvas(wrapper, {
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#f4f6fb',
+    logging: false,
+    width: 1200,
+    height: wrapper.scrollHeight || 800,
+    windowWidth: 1200,
+    windowHeight: 800
   });
+
+  const dataUrl = shotCanvas.toDataURL('image/png');
+
+  // Clean up
+  document.body.removeChild(wrapper);
+  document.head.removeChild(styleEl);
+
+  return dataUrl;
 }
 
-/* ── I DO renderer ── */
-async function renderIDo(ctx2, el){
-  // Navy header band
-  ctx2.fillStyle=NAVY;ctx2.fillRect(0,0,SLIDE_W,48);
-  ctx2.fillStyle=YELLOW;setFont(ctx2,13,'700');ctx2.textAlign='left';
-  ctx2.fillText('I DO',28,30);
-
-  const ido=el.querySelector('.ido-q');
-  if(!ido)return;
-  // Question box
-  const bx=60,by=90,bw=SLIDE_W-120,bh=SLIDE_H-160;
-  ctx2.fillStyle='rgba(255,255,255,0.92)';
-  ctx2.strokeStyle=NAVY;ctx2.lineWidth=2.5;
-  roundRect(ctx2,bx,by,bw,bh,12);
-  ctx2.fill();ctx2.stroke();
-
-  ctx2.fillStyle=NAVY;setFont(ctx2,26,'500');ctx2.textAlign='left';
-  drawWrappedText(ctx2,getTextContent(ido),bx+32,by+50,bw-64,46);
-}
-
-/* ── WE DO renderer ── */
-async function renderWeDo(ctx2, el){
-  // Navy header band
-  ctx2.fillStyle=NAVY;ctx2.fillRect(0,0,SLIDE_W,36);
-  ctx2.fillStyle=YELLOW;setFont(ctx2,13,'700');ctx2.textAlign='left';
-  ctx2.fillText('WE DO',28,24);
-
-  const halfW=SLIDE_W/2;
-
-  // Left panel (Example)
-  ctx2.fillStyle=NAVY;ctx2.fillRect(0,36,halfW,48);
-  ctx2.fillStyle=YELLOW;setFont(ctx2,12,'700');ctx2.textAlign='left';
-  ctx2.fillText('▶  EXAMPLE',22,66);
-
-  // Left body — dot paper
-  ctx2.fillStyle='#f7f9fd';ctx2.fillRect(0,84,halfW,SLIDE_H-84);
-  ctx2.fillStyle=DOT_COL;
-  for(let x=0;x<halfW;x+=22)for(let y=84;y<SLIDE_H;y+=22){ctx2.beginPath();ctx2.arc(x,y,1.3,0,Math.PI*2);ctx2.fill();}
-
-  // Right panel (Your turn)
-  ctx2.fillStyle=YELLOW;ctx2.fillRect(halfW,36,halfW,48);
-  ctx2.fillStyle=NAVY;setFont(ctx2,12,'700');ctx2.textAlign='left';
-  ctx2.fillText('✏  YOUR TURN',halfW+22,66);
-
-  // Right body — dot paper
-  ctx2.fillStyle='#f7f9fd';ctx2.fillRect(halfW,84,halfW,SLIDE_H-84);
-  ctx2.fillStyle=DOT_COL;
-  for(let x=halfW;x<SLIDE_W;x+=22)for(let y=84;y<SLIDE_H;y+=22){ctx2.beginPath();ctx2.arc(x,y,1.3,0,Math.PI*2);ctx2.fill();}
-
-  // Divider
-  ctx2.strokeStyle=NAVY;ctx2.lineWidth=3;
-  ctx2.beginPath();ctx2.moveTo(halfW,36);ctx2.lineTo(halfW,SLIDE_H);ctx2.stroke();
-
-  // Example text
-  const exBody=el.querySelector('.ex-panel .pair-body');
-  if(exBody){
-    ctx2.fillStyle=TEXT;setFont(ctx2,20,'400');ctx2.textAlign='left';
-    drawWrappedText(ctx2,getTextContent(exBody),22,116,halfW-44,34);
-  }
-
-  // Your turn text
-  const prBody=el.querySelector('.pr-panel .pair-body');
-  if(prBody){
-    ctx2.fillStyle=TEXT;setFont(ctx2,20,'400');ctx2.textAlign='left';
-    drawWrappedText(ctx2,getTextContent(prBody),halfW+22,116,halfW-44,34);
-  }
-}
-
-/* ── YOU DO renderer ── */
-async function renderYouDo(ctx2, el){
-  const titleEl=el.querySelector('.s-title');
-  drawSlideBar(ctx2,'You Do', titleEl?getTextContent(titleEl):'Practice');
-
-  const cells=[...el.querySelectorAll('.fcell,.dcell')];
-  if(!cells.length)return;
-
-  const cols=cells.length<=2?2:3;
-  const rows=Math.ceil(cells.length/cols);
-  const cellW=SLIDE_W/cols, cellH=(SLIDE_H-48)/rows;
-
-  cells.forEach((cell,i)=>{
-    const col=i%cols, row=Math.floor(i/cols);
-    const cx=col*cellW, cy=48+row*cellH;
-
-    ctx2.fillStyle=WHITE;ctx2.fillRect(cx,cy,cellW,cellH);
-    ctx2.strokeStyle=RULE;ctx2.lineWidth=1.5;
-    if(col<cols-1){ctx2.beginPath();ctx2.moveTo(cx+cellW,cy);ctx2.lineTo(cx+cellW,cy+cellH);ctx2.stroke();}
-    if(row<rows-1){ctx2.beginPath();ctx2.moveTo(cx,cy+cellH);ctx2.lineTo(cx+cellW,cy+cellH);ctx2.stroke();}
-
-    const qNum=cell.querySelector('.q-num');
-    if(qNum){
-      ctx2.fillStyle=NAVY;ctx2.beginPath();ctx2.arc(cx+24,cy+22,12,0,Math.PI*2);ctx2.fill();
-      ctx2.fillStyle=YELLOW;setFont(ctx2,11,'700');ctx2.textAlign='center';
-      ctx2.fillText(getTextContent(qNum),cx+24,cy+26);
-    }
-    const qType=cell.querySelector('.q-type');
-    if(qType){
-      ctx2.fillStyle='rgba(31,56,100,0.4)';setFont(ctx2,9,'700');ctx2.textAlign='left';
-      ctx2.fillText(getTextContent(qType).toUpperCase(),cx+42,cy+24);
-    }
-    const qText=cell.querySelector('.q-text');
-    if(qText){
-      ctx2.fillStyle=TEXT;setFont(ctx2,17,'400');ctx2.textAlign='left';
-      drawWrappedText(ctx2,getTextContent(qText),cx+16,cy+50,cellW-32,26);
-    }
-  });
-}
-
-/* ── Main import function ── */
+/* -- Main import function -- */
 async function importLesson(){
   const html=document.getElementById('lesson-paste').value.trim();
   if(!html){showToast('Please paste lesson HTML first');return;}
@@ -1784,31 +1592,34 @@ async function importLesson(){
   const progressEl=document.getElementById('lesson-progress');
   const importBtn =document.getElementById('lesson-import-btn');
   progressEl.style.display='block';
-  progressEl.textContent='Parsing lesson…';
+  progressEl.textContent='Parsing lesson...';
   importBtn.disabled=true;
 
   try{
-    const parsed = parseLessonHTML(html);
+    const {css, slides} = parseLessonHTML(html);
     const sections = {};
     let total=0;
-    SECTION_ORDER.forEach(s=>{total+=(parsed[s]||[]).length});
+    SECTION_ORDER.forEach(s=>{ total+=(slides[s]||[]).length; });
 
     if(!total){
-      showToast('No slides found — check the lesson HTML');
-      importBtn.disabled=false;return;
+      showToast('No slides found   check the lesson HTML');
+      importBtn.disabled=false; return;
     }
 
     let done=0;
     for(const sec of SECTION_ORDER){
-      const slides=parsed[sec]||[];
-      if(!slides.length)continue;
+      const slideList=slides[sec]||[];
+      if(!slideList.length) continue;
       sections[sec]=[];
-      for(const slide of slides){
-        progressEl.textContent=`Rendering ${sec} (${done+1}/${total})…`;
-        // Yield to browser between renders
-        await new Promise(r=>setTimeout(r,0));
-        const oc=await renderSlideToCanvas(slide.el, sec);
-        sections[sec].push(oc.toDataURL('image/png'));
+      for(const slide of slideList){
+        progressEl.textContent=`Rendering ${sec} ${sections[sec].length+1} of ${slideList.length}...`;
+        await new Promise(r=>setTimeout(r,0)); // yield to UI
+        try{
+          const dataUrl = await renderSlideViaDiv(slide.html, css);
+          sections[sec].push(dataUrl);
+        } catch(e){
+          console.warn('Render failed for',slide.id,e);
+        }
         done++;
       }
     }
@@ -1816,23 +1627,20 @@ async function importLesson(){
     lessonSections=sections;
     buildSectionDropdowns();
     closeLessonModal();
-    showToast('Lesson imported');
-  }catch(e){
+    showToast('Lesson imported   use section buttons to add slides');
+  } catch(e){
     console.error('Import error:',e);
-    showToast('Import failed — check console');
+    showToast('Import failed   check console');
   }
   importBtn.disabled=false;
 }
 
 function resetIframe(){
-  const iframe=document.getElementById('lesson-iframe');
-  if(iframe){iframe.style.visibility='hidden';iframe.style.left='-9999px';iframe.src='about:blank';}
+  // Kept for compatibility   no longer used
 }
 
 
-
-
-/* ── SECTION DROPDOWNS (built after lesson import) ── */
+/* -- SECTION DROPDOWNS (built after lesson import) -- */
 function buildSectionDropdowns(){
   const container=document.getElementById('lesson-btns');
   if(!container)return;
@@ -1840,7 +1648,7 @@ function buildSectionDropdowns(){
 
   const hasSections=SECTION_ORDER.some(s=>lessonSections[s]&&lessonSections[s].length);
   if(!hasSections){
-    const btn=document.createElement('button');btn.className='tbtn';btn.textContent='＋ Lesson';
+    const btn=document.createElement('button');btn.className='tbtn';btn.textContent='  Lesson';
     btn.onclick=openLessonModal;container.appendChild(btn);
     return;
   }
@@ -1849,7 +1657,7 @@ function buildSectionDropdowns(){
   const reBtn=document.createElement('button');
   reBtn.className='tbtn';reBtn.title='Re-import lesson';
   reBtn.style.cssText='min-width:22px;width:22px;padding:0;font-size:11px';
-  reBtn.textContent='↺';reBtn.onclick=openLessonModal;
+  reBtn.textContent='reload';reBtn.onclick=openLessonModal;
   container.appendChild(reBtn);
 
   SECTION_ORDER.forEach(sec=>{
@@ -1922,7 +1730,7 @@ function insertLessonSlide(src, label){
   tempImg.src=src;
 }
 
-/* ── INIT ── */
+/* -- INIT -- */
 openDB().then(()=>showHome()).catch(()=>{showToast('Boards cannot be saved in private browsing');newBoard()});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();showToast('Tip: Add to home screen to install')});
 </script>
