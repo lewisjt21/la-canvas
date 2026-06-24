@@ -1601,27 +1601,44 @@ async function importLesson(){
       item.el.style.minHeight='700px';
     } catch(e){}
 
-    await new Promise(r=>setTimeout(r, 250));
+    await new Promise(r=>setTimeout(r, 300));
 
-    // Screenshot the slide-area or the active slide
+    // Screenshot using the iframe's own window context
+    // html2canvas must run inside the iframe to access its DOM
     try {
-      // Screenshot the active slide at full resolution
-      const shotCanvas = await html2canvas(item.el, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#f4f6fb',
-        logging: false,
-        windowWidth: 1200,
-        windowHeight: 800,
-        foreignObjectRendering: false,
-        imageTimeout: 0,
-        width: 1200,
-        height: item.el.scrollHeight || 700
+      const dataUrl = await new Promise((resolve, reject)=>{
+        // Inject html2canvas script into iframe if not already there
+        const iframeWin = iframe.contentWindow;
+        const iframeDoc = iframe.contentDocument;
+
+        function runScreenshot(){
+          iframeWin.html2canvas(item.el, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#f4f6fb',
+            logging: false,
+            foreignObjectRendering: false,
+            imageTimeout: 0,
+            width: item.el.offsetWidth || 1200,
+            height: item.el.scrollHeight || 700
+          }).then(sc=>resolve(sc.toDataURL('image/png'))).catch(reject);
+        }
+
+        if(iframeWin.html2canvas){
+          runScreenshot();
+        } else {
+          // Inject html2canvas into the iframe
+          const s = iframeDoc.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+          s.onload = ()=>{ setTimeout(runScreenshot, 100); };
+          s.onerror = reject;
+          iframeDoc.head.appendChild(s);
+        }
       });
-      sections[sec].push(shotCanvas.toDataURL('image/png', 1.0));
+      sections[sec].push(dataUrl);
     } catch(e){
-      console.warn('Screenshot failed for slide',i,e);
+      console.warn('Screenshot failed for slide', i, e);
     }
   }
 
