@@ -54,7 +54,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .folder-card{background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.12);
   border-radius:11px;padding:14px 16px;cursor:pointer;position:relative;
   transition:border-color .15s,transform .1s;display:flex;align-items:center;gap:10px}
-.folder-card:hover{border-color:var(--yellow);transform:scale(1.02)}
+.folder-card:hover{border-color:var(--fcol,var(--yellow)) !important;transform:scale(1.02);background:rgba(255,255,255,.11)}
 .folder-card:active{transform:scale(.98)}
 .folder-icon{font-size:22px;flex-shrink:0;line-height:1}
 .folder-info{flex:1;min-width:0}
@@ -165,30 +165,12 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #save-indicator{font-size:9px;font-weight:600;color:rgba(255,255,255,.3);white-space:nowrap;flex-shrink:0;transition:color .3s}
 #save-indicator.saving{color:var(--yellow)}
 #save-indicator.saved{color:rgba(255,255,255,.4)}
-#prog-wrap{position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.1)}
-#prog-fill{height:100%;background:var(--yellow);transition:width .25s ease}
+
 
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg-colour);transition:background .3s}
 #main-canvas{position:absolute;inset:0;touch-action:none}
 
-#page-strip{height:52px;flex-shrink:0;background:var(--navydim);border-top:1px solid rgba(255,255,255,.1);
-  display:flex;align-items:center;padding:0 12px;gap:8px;overflow-x:auto;overflow-y:hidden;
-  -webkit-overflow-scrolling:touch;scrollbar-width:none}
-#page-strip::-webkit-scrollbar{display:none}
-.page-thumb{flex-shrink:0;width:60px;height:36px;border-radius:5px;border:2px solid rgba(255,255,255,.2);
-  background:rgba(255,255,255,.06);cursor:pointer;position:relative;transition:border-color .15s,transform .1s;overflow:hidden}
-.page-thumb:hover{border-color:rgba(255,255,255,.4);transform:scale(1.05)}
-.page-thumb.active{border-color:var(--yellow)}
-.page-thumb canvas{width:100%;height:100%;display:block}
-.thumb-del{position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;
-  background:rgba(192,57,43,.85);color:white;border:none;font-size:11px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .15s;line-height:1;padding:0}
-.page-thumb:hover .thumb-del{opacity:1}
-.page-thumb .pg-num{position:absolute;bottom:2px;right:4px;font-size:8px;font-weight:700;color:rgba(255,255,255,.6)}
-#add-page-btn{flex-shrink:0;width:36px;height:36px;border-radius:5px;border:2px dashed rgba(255,255,255,.25);
-  background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:20px;
-  display:flex;align-items:center;justify-content:center;transition:all .15s}
-#add-page-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
 
 /* PEN UI */
 #pen-ui-wrap{position:fixed;left:16px;bottom:68px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none}
@@ -240,12 +222,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #pdf-spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--yellow);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-#page-del-confirm{display:none;position:fixed;inset:0;z-index:350;background:rgba(22,42,78,.7);align-items:center;justify-content:center}
-#page-del-confirm.active{display:flex}
-#page-del-box{background:var(--navydim);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;
-  padding:24px 28px;display:flex;flex-direction:column;gap:16px;color:white;max-width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5)}
-#page-del-box h3{font-size:15px;font-weight:700}
-#page-del-box p{font-size:12px;color:rgba(255,255,255,.6)}
+
 .del-btns{display:flex;gap:8px}
 .del-btns button{flex:1;height:34px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 #pdel-cancel{background:rgba(255,255,255,.1);color:white}
@@ -364,7 +341,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <span id="app-title" style="margin-left:2px">Untitled Board</span>
     <div style="flex:1"></div>
     <span id="save-indicator">●</span>
-    <span id="page-counter">1 / 1</span>
     <button class="tbtn" onclick="resetView()" title="Reset view">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -382,14 +358,10 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
       <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content">＋ Lesson</button>
     </div>
     <button class="tbtn" onclick="exportPDF()" title="Export PDF">&#8595; PDF</button>
-    <div id="prog-wrap"><div id="prog-fill"></div></div>
   </div>
   <div id="canvas-wrap">
     <canvas id="main-canvas"></canvas>
     <div id="zoom-pill">100%</div>
-  </div>
-  <div id="page-strip">
-    <button id="add-page-btn" onclick="addPage()">+</button>
   </div>
 </div>
 
@@ -440,16 +412,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 <!-- OVERLAYS -->
 <div id="pdf-overlay"><div id="pdf-spinner"></div><span id="pdf-status">Preparing…</span></div>
 
-<div id="page-del-confirm">
-  <div id="page-del-box">
-    <h3>Delete this page?</h3>
-    <p>All annotations on this page will be lost.</p>
-    <div class="del-btns">
-      <button id="pdel-cancel" onclick="document.getElementById('page-del-confirm').classList.remove('active');pageDeleteTarget=null">Cancel</button>
-      <button id="pdel-ok" onclick="confirmPageDelete()">Delete</button>
-    </div>
-  </div>
-</div>
 
 <!-- Context menu (long-press) -->
 <div id="ctx-menu">
@@ -722,14 +684,35 @@ async function renderHome(){
 }
 
 /* -- FOLDER CARDS -- */
+/* -- FOLDER COLOURS -- */
+const FOLDER_COLOURS = [
+  '#FFC425','#4A90D9','#E05C5C','#5CB85C','#9B59B6',
+  '#E67E22','#1ABC9C','#E91E8C','#00BCD4','#8BC34A',
+  '#FF5722','#607D8B','#795548','#F06292','#26C6DA',
+  '#AED581','#FFB74D','#BA68C8','#4DB6AC','#F48FB1'
+];
+async function nextFolderColour(parentId){
+  const siblings=await dbGetByIndex(FOLDERS,"parentId",parentId);
+  siblings.sort((a,b)=>a.created-b.created);
+  return FOLDER_COLOURS[siblings.length % FOLDER_COLOURS.length];
+}
+function folderColour(folder){ return folder.colour||FOLDER_COLOURS[0]; }
+
 function buildFolderCard(folder){
+  const col = folderColour(folder);
+  const isClass = navStack.length === 0;
   const card=document.createElement('div');card.className='folder-card';
-  card.innerHTML=`
-    <div class="folder-icon">${navStack.length===0?'  ':' '}</div>
-    <div class="folder-info">
-      <div class="folder-name">${escHtml(folder.name)}</div>
-      <div class="folder-count" id="fc-${folder.id}">...</div>
-    </div>`;
+  card.style.setProperty('--fcol', col);
+  card.style.borderColor = col + '55';
+  const iconSize = isClass ? '28' : '22';
+  const iconSVG = '<svg width="'+iconSize+'" height="'+(isClass?'24':'19')+'" viewBox="0 0 24 20" fill="'+col+'"><path d="M2 4a2 2 0 0 1 2-2h4.586a2 2 0 0 1 1.414.586L11.414 4H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4z"/></svg>';
+  card.innerHTML = [
+    '<div style="background:'+col+'22;border-radius:8px;width:40px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+iconSVG+'</div>',
+    '<div class="folder-info">',
+    '<div class="folder-name">'+escHtml(folder.name)+'</div>',
+    '<div class="folder-count" id="fc-'+folder.id+'">...</div>',
+    '</div>'
+  ].join('');
   card.addEventListener('click',()=>navInto(folder.id));
   // Long press for folder options
   let lpTimer;
@@ -911,7 +894,8 @@ async function confirmFolderAction(){
   if(!name){showToast('Please enter a name');return}
   if(folderSheetMode==='create'){
     const parentId=currentParentId();
-    await dbPut(FOLDERS,{id:genId(),name,parentId,created:Date.now()});
+    const colour=await nextFolderColour(parentId);
+    await dbPut(FOLDERS,{id:genId(),name,parentId,created:Date.now(),colour});
     showToast('Folder created');
   } else {
     if(!ctxTargetFolder)return;
@@ -1624,7 +1608,8 @@ function buildSectionDropdowns(){
   const reBtn=document.createElement('button');
   reBtn.className='tbtn';reBtn.title='Re-import lesson';
   reBtn.style.cssText='min-width:22px;width:22px;padding:0;font-size:11px';
-  reBtn.textContent='reload';reBtn.onclick=openLessonModal;
+  reBtn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>';
+  reBtn.onclick=openLessonModal;
   container.appendChild(reBtn);
 
   SECTION_ORDER.forEach(sec=>{
