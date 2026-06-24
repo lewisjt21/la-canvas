@@ -499,8 +499,15 @@ function dbPut(store,rec){return new Promise((r,j)=>{const q=stx(store,'readwrit
 function dbDelete(store,id){return new Promise((r,j)=>{const q=stx(store,'readwrite').delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
 function dbGetByIndex(store,index,val){
   return new Promise((r,j)=>{
-    const q=stx(store,'readonly').index(index).getAll(val);
-    q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);
+    // IndexedDB cannot query for null keys via index — fall back to getAll+filter
+    if(val===null||val===undefined){
+      const q=stx(store,'readonly').getAll();
+      q.onsuccess=()=>r(q.result.filter(rec=>rec[index]===null||rec[index]===undefined));
+      q.onerror=()=>j(q.error);
+    } else {
+      const q=stx(store,'readonly').index(index).getAll(val);
+      q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);
+    }
   });
 }
 function dbGetAll(store){return new Promise((r,j)=>{const q=stx(store,'readonly').getAll();q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)})}
