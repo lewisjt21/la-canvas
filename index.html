@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="LA Canvas">
-<title>LA Canvas v43</title>
+<title>LA Canvas v44</title>
 <link rel="manifest" href="manifest.json">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -1661,7 +1661,13 @@ openDB().then(()=>showHome()).catch(()=>{showToast('Boards cannot be saved in pr
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();showToast('Tip: Add to home screen to install')});
 </script>
 <script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})})}
+if('serviceWorker' in navigator){
+  // Unregister old sw.js if present
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(reg=>{ if(reg.active&&reg.active.scriptURL.includes('sw.js')&&!reg.active.scriptURL.includes('sw2.js')) reg.unregister(); });
+  });
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw2.js').catch(()=>{})});
+}
 </script>
 </body>
 </html>
