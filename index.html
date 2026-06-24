@@ -365,7 +365,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
       </svg>
     </button>
     <!-- Lesson import button — replaced by section dropdowns after import -->
-    <div id="lesson-btns">
+    <div id="lesson-btns" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
       <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content">＋ Lesson</button>
     </div>
     <button class="tbtn" onclick="exportPDF()" title="Export PDF">&#8595; PDF</button>
@@ -1484,16 +1484,27 @@ async function importLesson(){
     iframe.src = blobUrl;
   });
 
-  // Wait for MathJax to finish inside the iframe (up to 5s)
+  // Wait for MathJax to finish inside the iframe
   progressEl.textContent='Waiting for content to render…';
-  await new Promise(r=>setTimeout(r, 800));
+  // Initial settle time for iframe load + MathJax script execution
+  await new Promise(r=>setTimeout(r, 1200));
   try {
     const iframeWin = iframe.contentWindow;
-    if(iframeWin.MathJax && iframeWin.MathJax.typesetPromise){
-      await iframeWin.MathJax.typesetPromise();
+    if(iframeWin.MathJax){
+      // MathJax 3: typesetPromise
+      if(iframeWin.MathJax.typesetPromise){
+        await iframeWin.MathJax.typesetPromise();
+        await new Promise(r=>setTimeout(r, 600));
+      }
+      // MathJax 2: Hub.Queue
+      else if(iframeWin.MathJax.Hub){
+        await new Promise(r=>iframeWin.MathJax.Hub.Queue(['Typeset',iframeWin.MathJax.Hub,()=>r()]));
+        await new Promise(r=>setTimeout(r, 600));
+      }
     }
-  } catch(e){ /* MathJax not available or cross-origin — continue */ }
-  await new Promise(r=>setTimeout(r, 400));
+  } catch(e){ /* cross-origin — just wait */ }
+  // Final settle for any remaining async rendering
+  await new Promise(r=>setTimeout(r, 800));
 
   // Find all slides in the iframe document
   const iDoc = iframe.contentDocument;
@@ -1565,21 +1576,26 @@ async function importLesson(){
       }
     } catch(e){}
 
-    await new Promise(r=>setTimeout(r, 150));
+    await new Promise(r=>setTimeout(r, 250));
 
     // Screenshot the slide-area or the active slide
     try {
-      const target = iDoc.getElementById('slide-area') || iDoc.body;
-      const shotCanvas = await html2canvas(target, {
-        scale:1.5,
-        useCORS:true,
-        allowTaint:true,
-        backgroundColor:'#f4f6fb',
-        logging:false,
-        windowWidth:1200,
-        windowHeight:800
+      // Screenshot the active slide element specifically (more accurate than slide-area)
+      const slideArea = iDoc.getElementById('slide-area');
+      const activeSlide = slideArea ? (slideArea.querySelector('.slide.active') || slideArea) : iDoc.body;
+      const shotCanvas = await html2canvas(activeSlide, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#f4f6fb',
+        logging: false,
+        windowWidth: 1200,
+        windowHeight: 800,
+        // Ensure MathJax SVGs are captured correctly
+        foreignObjectRendering: false,
+        imageTimeout: 0
       });
-      sections[sec].push(shotCanvas.toDataURL('image/jpeg', 0.88));
+      sections[sec].push(shotCanvas.toDataURL('image/png', 1.0));
     } catch(e){
       console.warn('Screenshot failed for slide',i,e);
     }
