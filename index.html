@@ -293,7 +293,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 </head>
 <body>
 
-<!-- ═══ HOME ═══ -->
 <div id="home">
   <div id="home-bar">
     <div class="h-badge">LA</div>
@@ -325,7 +324,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- ═══ APP ═══ -->
 <div id="app">
   <div id="topbar">
     <button class="tbtn" onclick="goHome()" title="All boards" style="min-width:26px;width:26px;padding:0">
@@ -353,7 +351,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
         <polyline points="21 15 16 10 5 21"/>
       </svg>
     </button>
-    <!-- Lesson import button — replaced by section dropdowns after import -->
     <div id="lesson-btns" style="display:flex;align-items:center;gap:6px;flex-shrink:0">
       <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Lesson</button>
     </div>
@@ -367,7 +364,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 <input type="file" id="img-input" accept="image/*">
 
-<!-- PEN UI -->
 <div id="pen-ui-wrap" style="display:none">
   <div id="pen-pill" title="Pen options">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -409,11 +405,9 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </button>
 </div>
 
-<!-- OVERLAYS -->
 <div id="pdf-overlay"><div id="pdf-spinner"></div><span id="pdf-status">Preparing…</span></div>
 
 
-<!-- Context menu (long-press) -->
 <div id="ctx-menu">
   <div class="ctx-item" id="ctx-move" onclick="openMoveSheet()">
     <span class="ctx-icon">📂</span> Move to folder
@@ -426,7 +420,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Folder context menu -->
 <div id="folder-ctx">
   <div class="ctx-item" id="fctx-rename" onclick="renameFolderPrompt()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;color:white;cursor:pointer;transition:background .12s">
     <span class="ctx-icon">✏️</span> Rename
@@ -436,7 +429,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Move sheet -->
 <div id="move-sheet">
   <div id="move-box">
     <div id="move-box-head">
@@ -447,7 +439,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Folder create/rename sheet -->
 <div id="folder-sheet">
   <div id="folder-box">
     <h3 id="folder-sheet-title">New Folder</h3>
@@ -459,7 +450,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Warning dialog (non-empty folder delete etc) -->
 <div id="warn-dialog">
   <div id="warn-box">
     <h3 id="warn-title">Are you sure?</h3>
@@ -473,7 +463,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 <div id="toast"></div>
 
-<!-- Lesson import modal -->
 <div id="lesson-modal">
   <div id="lesson-box">
     <div id="lesson-box-head">
@@ -1225,17 +1214,17 @@ function restorePageSnapshot(snap){
 }
 function commitStroke(stroke){
   undoStacks[curPage].push(snapshotPage());if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
-  redoStacks[curPage]=[];strokes().push(stroke);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
+  redoStacks[curPage]=[];strokes().push(stroke);syncUndoRedo();render();scheduleAutoSave();
 }
 function undo(){
   if(!undoStacks[curPage]||!undoStacks[curPage].length){showToast('Nothing to undo');return}
   redoStacks[curPage].push(snapshotPage());restorePageSnapshot(undoStacks[curPage].pop());
-  render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
+  render();syncUndoRedo();scheduleAutoSave();
 }
 function redo(){
   if(!redoStacks[curPage]||!redoStacks[curPage].length){showToast('Nothing to redo');return}
   undoStacks[curPage].push(snapshotPage());restorePageSnapshot(redoStacks[curPage].pop());
-  render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
+  render();syncUndoRedo();scheduleAutoSave();
 }
 
 /* -- IMAGE INSERT -- */
@@ -1259,7 +1248,7 @@ imgInput.addEventListener('change',e=>{
       const imgObj={x:vC.x-vw/2,y:vC.y-vh/2,w:vw,h:vh,src:rSrc,_el:null};
       loadImgEl(imgObj);undoStacks[curPage].push(snapshotPage());
       if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
-      redoStacks[curPage]=[];images().push(imgObj);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();showToast('Image inserted');
+      redoStacks[curPage]=[];images().push(imgObj);syncUndoRedo();render();scheduleAutoSave();showToast('Image inserted');
     };tempImg.src=src;
   };
   reader.readAsDataURL(file);imgInput.value='';
@@ -1327,7 +1316,7 @@ function updatePageCounter(){ /* page counter removed */ }
 function clearPage(){
   if(!strokes().length&&!images().length){showToast('Page already empty');return}
   undoStacks[curPage].push(snapshotPage());redoStacks[curPage]=[];
-  pageData[curPage]={strokes:[],images:[]};render();updateThumb(curPage);syncUndoRedo();scheduleAutoSave();
+  pageData[curPage]={strokes:[],images:[]};render();syncUndoRedo();scheduleAutoSave();
 }
 
 /* -- TITLE EDIT -- */
@@ -1650,7 +1639,7 @@ function insertLessonSlide(src, label){
     undoStacks[curPage].push(snapshotPage());
     if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
     redoStacks[curPage]=[];
-    images().push(imgObj);updateThumb(curPage);syncUndoRedo();render();scheduleAutoSave();
+    images().push(imgObj);syncUndoRedo();render();scheduleAutoSave();
     showToast(label+' added to canvas');
   };
   tempImg.src=src;
