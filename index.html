@@ -1098,16 +1098,28 @@ function render(){
 }
 
 function drawDots(W,H){
+  // LOD Culling: Disable dot grid when zoomed out to save massive CPU cycles
+  if(scale < 0.35) return; 
+
   const sv=toVirt(0,0),ev=toVirt(W,H);
   const gx0=Math.floor(sv.x/DOT_SPACING)*DOT_SPACING,gy0=Math.floor(sv.y/DOT_SPACING)*DOT_SPACING;
   ctx.fillStyle='rgba(31,56,100,0.13)';
-  for(let vx=gx0;vx<ev.x+DOT_SPACING;vx+=DOT_SPACING)
-    for(let vy=gy0;vy<ev.y+DOT_SPACING;vy+=DOT_SPACING){const s=toScreen(vx,vy);ctx.beginPath();ctx.arc(s.x,s.y,DOT_RADIUS*scale,0,Math.PI*2);ctx.fill()}
+  
+  // High-Performance Rendering: Use fillRect instead of calculating complex circular arcs
+  const dotSz = Math.max(1, (DOT_RADIUS * 2) * scale); 
+  
+  for(let vx=gx0;vx<ev.x+DOT_SPACING;vx+=DOT_SPACING){
+    for(let vy=gy0;vy<ev.y+DOT_SPACING;vy+=DOT_SPACING){
+      const s=toScreen(vx,vy);
+      ctx.fillRect(s.x - dotSz/2, s.y - dotSz/2, dotSz, dotSz);
+    }
+  }
 }
 
 function drawStroke(s){
   if(s.pts.length<2)return;
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  
   if(s.erase){
     ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='rgba(0,0,0,1)';ctx.lineWidth=s.size*scale*6;
     ctx.beginPath();const p0=toScreen(s.pts[0].x,s.pts[0].y);ctx.moveTo(p0.x,p0.y);
@@ -1119,18 +1131,24 @@ function drawStroke(s){
       const prev=s.pts[i-1],curr=s.pts[i];
       const avgP=((prev.p||.5)+(curr.p||.5))/2;
       const w=s.size*(0.4+avgP*1.6)*scale;
+      
+      // Rendering Floor: Enforce a minimum thickness of 1.5px to maintain macro-legibility 
+      ctx.lineWidth = Math.max(1.5, w); 
+      
       const a=toScreen(prev.x,prev.y),b=toScreen(curr.x,curr.y);
-      ctx.beginPath();ctx.lineWidth=Math.max(.5,w);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
   }
   ctx.restore();
 }
 
 function applyZoom(ns,px,py){
-  ns=Math.min(8,Math.max(.1,ns));
+  // Sensible Workspace Bounds: Caps at 30% min and 400% max
+  ns=Math.min(4,Math.max(.3,ns)); 
   offsetX=px-(px-offsetX)*(ns/scale);offsetY=py-(py-offsetY)*(ns/scale);
   scale=ns;showZoomPill();render();
 }
+
 function resetView(){scale=1;offsetX=0;offsetY=0;showZoomPill();render()}
 function showZoomPill(){
   const p=document.getElementById('zoom-pill');p.textContent=Math.round(scale*100)+'%';
