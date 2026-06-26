@@ -1061,7 +1061,8 @@ function goHome(){
 
 /* -- CANVAS ENGINE -- */
 const canvas=document.getElementById('main-canvas');
-const ctx=canvas?canvas.getContext('2d'):null;
+// Use desynchronized: true to bypass the standard DOM update loop for lower latency ink
+const ctx=canvas?canvas.getContext('2d', {desynchronized: true}):null;
 let drawing=false,eraseOn=false,penCol='#1a1a2e',penSz=3;
 let pageData=[{strokes:[],images:[]}],curPage=0,curStroke=null;
 let undoStacks=[[]],redoStacks=[[]];
@@ -1098,16 +1099,15 @@ function render(){
 }
 
 function drawDots(W,H){
-  // LOD Culling: Disable dot grid when zoomed out to save massive CPU cycles
+  // LOD Culling: Disable dot grid when zoomed out to save CPU
   if(scale < 0.35) return; 
 
   const sv=toVirt(0,0),ev=toVirt(W,H);
   const gx0=Math.floor(sv.x/DOT_SPACING)*DOT_SPACING,gy0=Math.floor(sv.y/DOT_SPACING)*DOT_SPACING;
   ctx.fillStyle='rgba(31,56,100,0.13)';
   
-  // High-Performance Rendering: Use fillRect instead of calculating complex circular arcs
+  // High-Performance fillRect over complex arcs
   const dotSz = Math.max(1, (DOT_RADIUS * 2) * scale); 
-  
   for(let vx=gx0;vx<ev.x+DOT_SPACING;vx+=DOT_SPACING){
     for(let vy=gy0;vy<ev.y+DOT_SPACING;vy+=DOT_SPACING){
       const s=toScreen(vx,vy);
@@ -1121,7 +1121,6 @@ function drawStroke(s){
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
   
   if(s.erase){
-    // Eraser rendering (thick straight lines are sufficient for clearing space)
     ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='rgba(0,0,0,1)';ctx.lineWidth=s.size*scale*6;
     ctx.beginPath();
     const p0=toScreen(s.pts[0].x,s.pts[0].y);
@@ -1141,7 +1140,6 @@ function drawStroke(s){
     }
     ctx.stroke();
   } else {
-    // Smooth Pen Rendering using Quadratic Bezier Curves
     ctx.globalCompositeOperation='source-over';
     ctx.strokeStyle=s.col;
 
@@ -1154,11 +1152,11 @@ function drawStroke(s){
         const p2 = toScreen(s.pts[i+1].x, s.pts[i+1].y);
         const mid = {x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2};
 
-        // Smooth pressure by averaging 3 points for a fluid transition
+        // Average pressure over 3 points for fluid width transitions
         const avgP = ((s.pts[i-1].p||.5) + (s.pts[i].p||.5) + (s.pts[i+1].p||.5)) / 3;
         const w = s.size * (0.4 + avgP * 1.6) * scale;
+        
         ctx.lineWidth = Math.max(1.5, w); // Enforce minimum thickness
-
         ctx.beginPath();
         ctx.moveTo(prevMid.x, prevMid.y);
         ctx.quadraticCurveTo(p1.x, p1.y, mid.x, mid.y);
@@ -1168,7 +1166,6 @@ function drawStroke(s){
         p1 = p2;
       }
 
-      // Draw final segment cleanly
       const lastAvgP = ((s.pts[s.pts.length-2].p||.5) + (s.pts[s.pts.length-1].p||.5)) / 2;
       const lastW = s.size * (0.4 + lastAvgP * 1.6) * scale;
       ctx.lineWidth = Math.max(1.5, lastW);
@@ -1178,7 +1175,6 @@ function drawStroke(s){
       ctx.stroke();
 
     } else {
-      // Draw simple dot/dash if only 2 points exist
       const prev = s.pts[0], curr = s.pts[1];
       const avgP = ((prev.p||.5)+(curr.p||.5))/2;
       const w = s.size*(0.4+avgP*1.6)*scale;
@@ -1191,7 +1187,6 @@ function drawStroke(s){
 }
 
 function applyZoom(ns,px,py){
-  // Sensible Workspace Bounds: Caps at 30% min and 400% max
   ns=Math.min(4,Math.max(.3,ns)); 
   offsetX=px-(px-offsetX)*(ns/scale);offsetY=py-(py-offsetY)*(ns/scale);
   scale=ns;showZoomPill();render();
@@ -1240,7 +1235,7 @@ function onPointerMove(e){
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
     if(drawing&&curStroke){
-      // Hardware-Level Polling: Access 120Hz/240Hz stylus data between frames
+      // Intercept high-frequency stylus data between screen frames
       if (e.getCoalescedEvents) {
         const events = e.getCoalescedEvents();
         for (let evt of events) {
