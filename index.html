@@ -1332,38 +1332,104 @@ async function exportPDF(){
   overlay.classList.add('active');statusEl.textContent='Loading libraries...';
   if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   const{jsPDF}=window.jspdf;
-  const pW=297,pH=210,PDF_W=3508,PDF_H=2480,pad=60;
-  const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  for(let pi=0;pi<pageData.length;pi++){
+
+  let pdf = null;
+  const pad = 40; // 40 pixel padding around the edges of your work
+
+  for(let pi=0; pi<pageData.length; pi++){
     statusEl.textContent=`Exporting page ${pi+1} of ${pageData.length}...`;
     const pg=pageData[pi];
-    let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
-    for(const s of pg.strokes)for(const p of s.pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
-    for(const img of pg.images){if(img.x<mnX)mnX=img.x;if(img.y<mnY)mnY=img.y;if(img.x+img.w>mxX)mxX=img.x+img.w;if(img.y+img.h>mxY)mxY=img.y+img.h}
-    const oc=document.createElement('canvas');oc.width=PDF_W;oc.height=PDF_H;
-    let rs,rox,roy;
-    if(mnX===Infinity){rs=4;rox=PDF_W/2;roy=PDF_H/2}
-    else{const bW=(mxX-mnX)+pad*2,bH=(mxY-mnY)+pad*2;rs=Math.min(PDF_W/bW,PDF_H/bH);rox=(PDF_W-bW*rs)/2+(-mnX+pad)*rs;roy=(PDF_H-bH*rs)/2+(-mnY+pad)*rs}
-    const oc_ctx=oc.getContext('2d');
-    oc_ctx.fillStyle=bgColour;oc_ctx.fillRect(0,0,PDF_W,PDF_H);
-    oc_ctx.fillStyle='rgba(31,56,100,0.13)';
-    const ds=DOT_SPACING*rs,ox_=rox%ds,oy_=roy%ds;
-    for(let x=ox_;x<PDF_W+ds;x+=ds)for(let y=oy_;y<PDF_H+ds;y+=ds){oc_ctx.beginPath();oc_ctx.arc(x,y,DOT_RADIUS*rs,0,Math.PI*2);oc_ctx.fill()}
-    for(const img of pg.images){if(!img._el)continue;oc_ctx.drawImage(img._el,img.x*rs+rox,img.y*rs+roy,img.w*rs,img.h*rs)}
-    for(const s of pg.strokes){
-      if(s.pts.length<2)continue;oc_ctx.save();oc_ctx.lineCap='round';oc_ctx.lineJoin='round';
-      if(s.erase){oc_ctx.globalCompositeOperation='destination-out';oc_ctx.strokeStyle='rgba(0,0,0,1)';oc_ctx.lineWidth=s.size*rs*6;oc_ctx.beginPath();oc_ctx.moveTo(s.pts[0].x*rs+rox,s.pts[0].y*rs+roy);for(let i=1;i<s.pts.length;i++)oc_ctx.lineTo(s.pts[i].x*rs+rox,s.pts[i].y*rs+roy);oc_ctx.stroke()}
-      else{oc_ctx.globalCompositeOperation='source-over';oc_ctx.strokeStyle=s.col;for(let i=1;i<s.pts.length;i++){const prev=s.pts[i-1],curr=s.pts[i];const avgP=((prev.p||.5)+(curr.p||.5))/2;oc_ctx.lineWidth=Math.max(.5,s.size*(0.4+avgP*1.6)*rs);oc_ctx.beginPath();oc_ctx.moveTo(prev.x*rs+rox,prev.y*rs+roy);oc_ctx.lineTo(curr.x*rs+rox,curr.y*rs+roy);oc_ctx.stroke()}}
-      oc_ctx.restore();
-    }
-    if(pi>0)pdf.addPage('a4','landscape');
-    pdf.addImage(oc.toDataURL('image/png'),'PNG',0,0,pW,pH,undefined,'FAST');
-  }
-  const title=document.getElementById('app-title').textContent.replace(/\s+/g,'_')||'canvas';
-  pdf.save(title+'_annotated.pdf');overlay.classList.remove('active');showToast('PDF exported');
-}
 
-function loadScript(src){return new Promise((r,j)=>{if(document.querySelector(`script[src="${src}"]`)){r();return}const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
+    // 1. Calculate the exact Bounding Box of your content
+    let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+    for(const s of pg.strokes) {
+      if(s.erase) continue; // Prevent invisible eraser strokes from expanding the page size
+      for(const p of s.pts){
+        if(p.x<mnX)mnX=p.x; if(p.y<mnY)mnY=p.y; if(p.x>mxX)mxX=p.x; if(p.y>mxY)mxY=p.y;
+      }
+    }
+    for(const img of pg.images){
+      if(img.x<mnX)mnX=img.x; if(img.y<mnY)mnY=img.y;
+      if(img.x+img.w>mxX)mxX=img.x+img.w; if(img.y+img.h>mxY)mxY=img.y+img.h;
+    }
+
+    let bW, bH, oX, oY;
+    if(mnX===Infinity){
+      // Fallback dimensions if a page is entirely blank
+      bW = 1200; bH = 800; oX = 0; oY = 0; 
+    } else {
+      bW = (mxX - mnX) + pad * 2;
+      bH = (mxY - mnY) + pad * 2;
+      oX = mnX - pad;
+      oY = mnY - pad;
+    }
+
+    // 2. Build a custom PDF page that snaps to your bounding box exactly
+    const orientation = bW > bH ? 'landscape' : 'portrait';
+    if(!pdf){
+      pdf = new jsPDF({ orientation, unit: 'px', format: [bW, bH] });
+    } else {
+      pdf.addPage([bW, bH], orientation);
+    }
+
+    // 3. Draw Background
+    pdf.setFillColor(bgColour);
+    pdf.rect(0, 0, bW, bH, 'F');
+
+    // 4. Draw Vector Dot Grid
+    pdf.setFillColor('#d1d8e6'); 
+    const ds = DOT_SPACING;
+    const gx0 = Math.floor(oX/ds)*ds;
+    const gy0 = Math.floor(oY/ds)*ds;
+    for(let x=gx0; x<oX+bW+ds; x+=ds){
+      for(let y=gy0; y<oY+bH+ds; y+=ds){
+        const px = x - oX, py = y - oY;
+        if(px>=0 && px<=bW && py>=0 && py<=bH){
+          pdf.circle(px, py, DOT_RADIUS, 'F');
+        }
+      }
+    }
+
+    // 5. Embed Original High-Res Images Natively
+    for(const img of pg.images){
+      if(!img._el) continue;
+      try {
+        const format = img.src.includes('image/png') ? 'PNG' : 'JPEG';
+        pdf.addImage(img.src, format, img.x - oX, img.y - oY, img.w, img.h);
+      } catch(e) { console.error('Image embed error', e); }
+    }
+
+    // 6. Draw Pure Vector Mathematical Strokes
+    pdf.setLineCap('round');
+    pdf.setLineJoin('round');
+    for(const s of pg.strokes){
+      if(s.pts.length < 2) continue;
+      
+      if(s.erase){
+        // Simulate eraser by drawing a thick line mimicking the background color
+        pdf.setDrawColor(bgColour);
+        pdf.setLineWidth(s.size * 6);
+        for(let i=1; i<s.pts.length; i++){
+          pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
+        }
+      } else {
+        // Draw standard ink retaining pressure variance 
+        pdf.setDrawColor(s.col);
+        for(let i=1; i<s.pts.length; i++){
+          const prev = s.pts[i-1], curr = s.pts[i];
+          const avgP = ((prev.p||0.5) + (curr.p||0.5)) / 2;
+          pdf.setLineWidth(Math.max(0.5, s.size * (0.4 + avgP * 1.6)));
+          pdf.line(prev.x - oX, prev.y - oY, curr.x - oX, curr.y - oY);
+        }
+      }
+    }
+  }
+
+  const title=document.getElementById('app-title').textContent.replace(/\s+/g,'_')||'canvas';
+  pdf.save(title+'_annotated.pdf');
+  overlay.classList.remove('active');
+  showToast('PDF exported');
+}
 
 /* -- TOOL CONTROLS -- */
 function togglePalette(){_paletteOn=!_paletteOn;document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn)}
