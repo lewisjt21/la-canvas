@@ -166,11 +166,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #save-indicator.saving{color:var(--yellow)}
 #save-indicator.saved{color:rgba(255,255,255,.4)}
 
-
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg-colour);transition:background .3s}
 #main-canvas{position:absolute;inset:0;touch-action:none}
-
-
 
 /* PEN UI */
 #pen-ui-wrap{position:fixed;left:16px;bottom:16px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none}
@@ -222,7 +219,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #pdf-spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--yellow);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-
 .del-btns{display:flex;gap:8px}
 .del-btns button{flex:1;height:34px;border-radius:6px;border:none;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 #pdel-cancel{background:rgba(255,255,255,.1);color:white}
@@ -234,6 +230,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #img-input{display:none}
+
 /* ── LESSON IMPORT ── */
 #lesson-modal{display:none;position:fixed;inset:0;z-index:400;background:rgba(22,42,78,.88);
   align-items:center;justify-content:center}
@@ -406,7 +403,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 </div>
 
 <div id="pdf-overlay"><div id="pdf-spinner"></div><span id="pdf-status">Preparing…</span></div>
-
 
 <div id="ctx-menu">
   <div class="ctx-item" id="ctx-move" onclick="openMoveSheet()">
@@ -1431,6 +1427,8 @@ async function exportPDF(){
   showToast('PDF exported');
 }
 
+function loadScript(src){return new Promise((r,j)=>{if(document.querySelector(`script[src="${src}"]`)){r();return}const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
+
 /* -- TOOL CONTROLS -- */
 function togglePalette(){_paletteOn=!_paletteOn;document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn)}
 function toggleErase(){eraseOn=!eraseOn;document.getElementById('erase-btn').classList.toggle('erase-on',eraseOn)}
@@ -1549,7 +1547,6 @@ function buildPageMapUI(){
   list.innerHTML = '';
 
   // Smart defaults: guess section from page number
-  // Page 1 = Starter, last page = You Do, middle pages = I Do / We Do alternating
   const defaults = guessDefaults(pdfPageCount);
 
   pdfPages.forEach((src, i)=>{
@@ -1586,13 +1583,11 @@ function buildPageMapUI(){
 }
 
 function guessDefaults(n){
-  // Simple heuristic for typical lesson structure
   if(n === 0) return [];
   if(n === 1) return ['Starter'];
   if(n === 2) return ['Starter','You Do'];
   if(n === 3) return ['Starter','I Do','You Do'];
   if(n === 4) return ['Starter','I Do','We Do','You Do'];
-  // More pages: Starter, then I Do/We Do alternating, then You Do last
   const d = ['Starter'];
   for(let i=1; i<n-1; i++) d.push(i%2===1?'I Do':'We Do');
   d.push('You Do');
