@@ -1529,12 +1529,22 @@ document.getElementById('lesson-pdf-input').addEventListener('change', async e=>
   for(let i=1; i<=pdfPageCount; i++){
     document.getElementById('lesson-progress').textContent = 'Rendering page ' + i + ' of ' + pdfPageCount + '...';
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({scale: 2.0});
+    
+    // Increased scale to 4.0 for crystal clear resolution
+    const viewport = page.getViewport({scale: 4.0}); 
     const oc = document.createElement('canvas');
     oc.width  = viewport.width;
     oc.height = viewport.height;
-    await page.render({canvasContext: oc.getContext('2d'), viewport}).promise;
-    pdfPages.push(oc.toDataURL('image/png'));
+    
+    const oc_ctx = oc.getContext('2d');
+    // Fill white background to ensure clean JPEG conversion
+    oc_ctx.fillStyle = '#ffffff';
+    oc_ctx.fillRect(0, 0, oc.width, oc.height);
+    
+    await page.render({canvasContext: oc_ctx, viewport}).promise;
+    
+    // Use high-quality JPEG instead of PNG to prevent IndexedDB storage bloat at this new high resolution
+    pdfPages.push(oc.toDataURL('image/jpeg', 0.92)); 
   }
 
   document.getElementById('lesson-progress').style.display = 'none';
