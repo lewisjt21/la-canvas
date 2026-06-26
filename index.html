@@ -1121,21 +1121,69 @@ function drawStroke(s){
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
   
   if(s.erase){
+    // Eraser rendering (thick straight lines are sufficient for clearing space)
     ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='rgba(0,0,0,1)';ctx.lineWidth=s.size*scale*6;
-    ctx.beginPath();const p0=toScreen(s.pts[0].x,s.pts[0].y);ctx.moveTo(p0.x,p0.y);
-    for(let i=1;i<s.pts.length;i++){const p=toScreen(s.pts[i].x,s.pts[i].y);ctx.lineTo(p.x,p.y)}
+    ctx.beginPath();
+    const p0=toScreen(s.pts[0].x,s.pts[0].y);
+    ctx.moveTo(p0.x,p0.y);
+    if(s.pts.length > 2) {
+      for(let i=1; i<s.pts.length-1; i++){
+        const p1=toScreen(s.pts[i].x,s.pts[i].y);
+        const p2=toScreen(s.pts[i+1].x,s.pts[i+1].y);
+        const mid={x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2};
+        ctx.quadraticCurveTo(p1.x, p1.y, mid.x, mid.y);
+      }
+      const last=toScreen(s.pts[s.pts.length-1].x, s.pts[s.pts.length-1].y);
+      ctx.lineTo(last.x, last.y);
+    } else {
+      const p1=toScreen(s.pts[1].x,s.pts[1].y);
+      ctx.lineTo(p1.x, p1.y);
+    }
     ctx.stroke();
   } else {
-    ctx.globalCompositeOperation='source-over';ctx.strokeStyle=s.col;
-    for(let i=1;i<s.pts.length;i++){
-      const prev=s.pts[i-1],curr=s.pts[i];
-      const avgP=((prev.p||.5)+(curr.p||.5))/2;
-      const w=s.size*(0.4+avgP*1.6)*scale;
-      
-      // Rendering Floor: Enforce a minimum thickness of 1.5px to maintain macro-legibility 
-      ctx.lineWidth = Math.max(1.5, w); 
-      
-      const a=toScreen(prev.x,prev.y),b=toScreen(curr.x,curr.y);
+    // Smooth Pen Rendering using Quadratic Bezier Curves
+    ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle=s.col;
+
+    if(s.pts.length > 2) {
+      let p0 = toScreen(s.pts[0].x, s.pts[0].y);
+      let p1 = toScreen(s.pts[1].x, s.pts[1].y);
+      let prevMid = p0;
+
+      for (let i = 1; i < s.pts.length - 1; i++) {
+        const p2 = toScreen(s.pts[i+1].x, s.pts[i+1].y);
+        const mid = {x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2};
+
+        // Smooth pressure by averaging 3 points for a fluid transition
+        const avgP = ((s.pts[i-1].p||.5) + (s.pts[i].p||.5) + (s.pts[i+1].p||.5)) / 3;
+        const w = s.size * (0.4 + avgP * 1.6) * scale;
+        ctx.lineWidth = Math.max(1.5, w); // Enforce minimum thickness
+
+        ctx.beginPath();
+        ctx.moveTo(prevMid.x, prevMid.y);
+        ctx.quadraticCurveTo(p1.x, p1.y, mid.x, mid.y);
+        ctx.stroke();
+
+        prevMid = mid;
+        p1 = p2;
+      }
+
+      // Draw final segment cleanly
+      const lastAvgP = ((s.pts[s.pts.length-2].p||.5) + (s.pts[s.pts.length-1].p||.5)) / 2;
+      const lastW = s.size * (0.4 + lastAvgP * 1.6) * scale;
+      ctx.lineWidth = Math.max(1.5, lastW);
+      ctx.beginPath();
+      ctx.moveTo(prevMid.x, prevMid.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.stroke();
+
+    } else {
+      // Draw simple dot/dash if only 2 points exist
+      const prev = s.pts[0], curr = s.pts[1];
+      const avgP = ((prev.p||.5)+(curr.p||.5))/2;
+      const w = s.size*(0.4+avgP*1.6)*scale;
+      ctx.lineWidth = Math.max(1.5, w);
+      const a = toScreen(prev.x,prev.y), b = toScreen(curr.x,curr.y);
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
   }
@@ -1184,13 +1232,27 @@ function onPointerMove(e){
   e.preventDefault();if(!activePointers[e.pointerId])return;
   activePointers[e.pointerId]={x:e.clientX,y:e.clientY};
   const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
+  
   if(n===2){
     const pts=Object.values(activePointers),dist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
     const mid={x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top};
     if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastTouchMid.y;render()}
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
-    if(drawing&&curStroke){const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render()}
+    if(drawing&&curStroke){
+      // Hardware-Level Polling: Access 120Hz/240Hz stylus data between frames
+      if (e.getCoalescedEvents) {
+        const events = e.getCoalescedEvents();
+        for (let evt of events) {
+          const v = toVirt(evt.clientX-rect.left, evt.clientY-rect.top);
+          curStroke.pts.push({x:v.x, y:v.y, p:evt.pressure||.5});
+        }
+      } else {
+        const v = toVirt(e.clientX-rect.left, e.clientY-rect.top);
+        curStroke.pts.push({x:v.x, y:v.y, p:e.pressure||.5});
+      }
+      render();
+    }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
 }
@@ -1499,7 +1561,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 */
 let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
-const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
+const SECTION_LABELS = {'Starter':'Starter','I Do','We Do','You Do':'You Do'};
 
 // PDF.js CDN
 const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
