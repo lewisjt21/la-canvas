@@ -1214,7 +1214,6 @@ canvas.addEventListener('wheel',e=>{
   applyZoom(scale*(e.deltaY<0?1.1:.9),e.clientX-rect.left,e.clientY-rect.top);
 },{passive:false});
 
-
 /* -- UNDO/REDO -- */
 function syncUndoRedo(){
   const u=document.getElementById('undo-fab'),r=document.getElementById('redo-fab');
@@ -1500,7 +1499,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 */
 let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
-const SECTION_LABELS = {'Starter':'Starter','I Do','We Do','You Do':'You Do'};
+const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
 
 // PDF.js CDN
 const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
