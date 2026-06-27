@@ -229,7 +229,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
   background:var(--navy);color:white;font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;
-  box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
+  box-shadow:0 4px 166px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #img-input{display:none}
 
@@ -303,7 +303,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
       <div class="bc-sub" id="home-sub" style="display:none"></div>
     </div>
     <div class="home-bar-btns" id="home-bar-btns">
-      
       <button class="h-btn secondary" id="sync-btn" onclick="requestDriveAccess()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
         Sync
@@ -366,7 +365,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
   <div id="canvas-wrap">
     <canvas id="main-canvas"></canvas>
-    <video id="camera-overlay" autoplay playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:80; background:#000; pointer-events:none;"></video>
+    <video id="camera-overlay" autoplay playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:80; background:#000; pointer-events:none;"></video>
     <div id="zoom-pill">100%</div>
   </div>
 </div>
@@ -485,6 +484,17 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif;">Cancel</button>
   </div>
 </div>
+
+<div id="camera-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
+  <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:280px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);text-align:center">
+    <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;">Document Camera Mode</h3>
+    <p style="color:rgba(255,255,255,.6);font-size:12px;margin:0;font-family:'Inter',sans-serif;line-height:1.4;">Select a video profile optimized for your current task.</p>
+    <button onclick="startCamera('4k')" style="background:var(--yellow);color:var(--navy);border:none;border-radius:8px;height:36px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">4K High-Res (Static Clarity)</button>
+    <button onclick="startCamera('1080p')" style="background:rgba(255,255,255,.1);color:white;border:none;border-radius:8px;height:36px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">1080p 30FPS (Live Motion)</button>
+    <button onclick="document.getElementById('camera-modal').style.display='none'" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif;">Cancel</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <div id="lesson-modal">
@@ -512,16 +522,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 <input type="file" id="lesson-pdf-input" accept="application/pdf" style="display:none">
 
 <script>
-/* =======================================================
-   LA CANVAS   Folder file system
-   DB stores:
-     folders: { id, name, parentId, created }
-              parentId=null = class level
-              parentId=someId = topic level (child of class)
-     boards:  { id, name, folderId, created, updated, thumb, bgColour, pages }
-              folderId=null = Unassigned
-======================================================= */
-
 /* -- INDEXEDDB -- */
 const DB_NAME='la-canvas-db', DB_VER=2, BOARDS='boards', FOLDERS='folders';
 let db=null;
@@ -983,23 +983,22 @@ function generateBoardThumb(){
     if(s.pts.length<2)continue;
     tctx.save();
     tctx.strokeStyle=s.col;
+    tctx.lineCap='round';
+    tctx.lineJoin='round';
     if(s.tool==='hl'){
-        tctx.lineCap='round';
-        tctx.lineJoin='round';
         tctx.globalAlpha=0.25;
         tctx.globalCompositeOperation='multiply';
         tctx.lineWidth=s.size*sc;
-        tctx.beginPath();
-        tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
-        for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
-        tctx.stroke();
     } else {
-        tctx.lineCap='round';tctx.lineJoin='round';
+        tctx.globalAlpha=1.0;
+        tctx.globalCompositeOperation='source-over';
         tctx.lineWidth=Math.max(1,s.size*sc);
-        tctx.beginPath();tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
-        for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
-        tctx.stroke();
     }
+    ctx.beginPath();
+    const p0 = s.pts[0].x*sc+ox, q0 = s.pts[0].y*sc+oy;
+    tctx.moveTo(p0, q0);
+    for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
+    tctx.stroke();
     tctx.restore();
   }
   return tc.toDataURL();
@@ -1130,7 +1129,6 @@ function drawStroke(s){
     ctx.lineCap = 'round'; 
     ctx.lineJoin = 'round';
     ctx.lineWidth = s.size * scale; 
-    
     ctx.beginPath(); 
     const p0 = toScreen(s.pts[0].x, s.pts[0].y);
     ctx.moveTo(p0.x, p0.y); 
@@ -1233,14 +1231,7 @@ function onPointerMove(e){
     if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastTouchMid.y;render()}
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
-    if(drawing){
-      const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
-      if(currentTool==='eraser'){
-        if(eraseStrokeAt(v.x, v.y)){ erasedInCurrentStroke=true; render(); }
-      } else if (curStroke) {
-        curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render();
-      }
-    }
+    if(drawing&&curStroke){const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render()}
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
 }
@@ -1383,7 +1374,6 @@ function confirmPageDelete(){
   buildPageStrip();render();showToast('Page deleted');scheduleAutoSave();
 }
 function buildPageStrip(){ /* page strip removed */ }
-
 function updatePageCounter(){ /* page counter removed */ }
 
 function clearPage(){
@@ -1415,7 +1405,7 @@ async function exportPDF(){
 
     let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
     for(const s of pg.strokes) {
-      if(s.tool==='eraser' || s.erase) continue; 
+      if(s.tool=='eraser' || s.erase) continue; 
       for(const p of s.pts){
         if(p.x<mnX)mnX=p.x; if(p.y<mnY)mnY=p.y; if(p.x>mxX)mxX=p.x; if(p.y>mxY)mxY=p.y;
       }
@@ -1475,9 +1465,12 @@ async function exportPDF(){
       if(s.tool === 'hl') {
         pdf.setLineCap('round');
         pdf.setLineWidth(s.size);
+        pdf.beginPath();
+        pdf.moveTo(s.pts[0].x - oX, s.pts[0].y - oY);
         for(let i=1; i<s.pts.length; i++){
-          pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
+          pdf.lineTo(s.pts[i].x - oX, s.pts[i].y - oY);
         }
+        pdf.stroke();
       } else {
         pdf.setLineCap('round');
         for(let i=1; i<s.pts.length; i++){
@@ -1565,37 +1558,57 @@ document.getElementById('hl-slider').addEventListener('input', e => {
 });
 
 let cameraStream = null;
-async function toggleCamera() {
-  const video = document.getElementById('camera-overlay');
-  
-  if (!video) {
-    showToast('Error: Camera overlay element missing.');
-    return;
-  }
-  
+function toggleCamera() {
   if (cameraStream) {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;
-    video.style.display = 'none';
+    document.getElementById('camera-overlay').style.display = 'none';
     showToast('Document camera off');
   } else {
-    showToast('Requesting 1080p camera access...');
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 }
-        } 
-      });
-      video.srcObject = cameraStream;
-      video.style.display = 'block';
-      showToast('Document camera active');
-    } catch(e) {
-      console.error('Camera Error:', e);
-      showToast('Camera access denied by browser');
+    document.getElementById('camera-modal').style.display = 'flex';
+  }
+}
+
+async function startCamera(mode) {
+  document.getElementById('camera-modal').style.display = 'none';
+  const video = document.getElementById('camera-overlay');
+  
+  let constraints = {
+    video: { facingMode: "environment" }
+  };
+  
+  if (mode === '4k') {
+    showToast('Requesting 4K camera access...');
+    constraints.video.width = { ideal: 3840 };
+    constraints.video.height = { ideal: 2160 };
+  } else {
+    showToast('Requesting 1080p 30FPS stream...');
+    constraints.video.width = { ideal: 1920 };
+    constraints.video.height = { ideal: 1080 };
+    constraints.video.frameRate = { exact: 30 };
+  }
+  
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    showToast('Document camera active');
+  } catch(e) {
+    console.error('Camera Error:', e);
+    if (mode === '1080p') {
+      showToast('Strict 30FPS failed. Attempting auto-negotiation...');
+      try {
+        constraints.video.frameRate = { ideal: 30 };
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        showToast('Document camera active (Adaptive FPS)');
+        return;
+      } catch(fallbackErr) {
+        console.error('Fallback Camera Error:', fallbackErr);
+      }
     }
+    showToast('Camera access denied or unsupported format');
   }
 }
 
@@ -1603,15 +1616,7 @@ async function toggleCamera() {
 let toastTimer;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200)}
 
-
-/* =======================================================
-   LESSON IMPORT   Offscreen div + MathJax + html2canvas
-   1. DOMParser extracts slide HTML and lesson CSS
-   2. Each slide is cloned into a hidden div in the MAIN document
-   3. MathJax typesets it (same window   no cross-origin)
-   4. html2canvas screenshots it (same document   works perfectly)
-   5. Div removed, dataURL stored
-======================================================= */
+/* -- LESSON IMPORT SECTIONS -- */
 let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
 const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
@@ -1779,7 +1784,7 @@ function buildSectionDropdowns(){
     } else {
       const wrap=document.createElement('div');wrap.className='sec-drop';
       const btn=document.createElement('button');btn.className='sec-drop-btn';
-      btn.innerHTML=SECTION_LABELS[sec]+' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+      btn.innerHTML=SECTION_LABELS[sec]+' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>';
       const menu=document.createElement('div');menu.className='sec-drop-menu';
 
       slides.forEach((src,i)=>{
@@ -1951,7 +1956,6 @@ async function restoreFromDrive() {
       for (let f of data.folders) await dbPut(FOLDERS, f);
       for (let b of data.boards) await dbPut(BOARDS, b);
       showToast('Restore complete!');
-      
       navStack = []; 
       await renderHome();
     } else {
