@@ -164,9 +164,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .tbtn:hover{background:rgba(255,255,255,.2)}
 .tbtn svg{flex-shrink:0}
 #page-counter{font-size:10px;font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap;flex-shrink:0}
-#save-indicator{font-size:9px;font-weight:600;color:rgba(255,255,255,.3);white-space:nowrap;flex-shrink:0;transition:color .3s}
-#save-indicator.saving{color:var(--yellow)}
-#save-indicator.saved{color:rgba(255,255,255,.4)}
 
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg-colour);transition:background .3s}
 #main-canvas{position:absolute;inset:0;touch-action:none}
@@ -341,7 +338,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     </button>
     <span id="app-title" style="margin-left:8px">Untitled Board</span>
     <div style="flex:1"></div>
-    <span id="save-indicator">●</span>
     <button class="tbtn" onclick="resetView()" title="Reset view">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -972,7 +968,6 @@ async function saveCurrentBoard(){
       images:pg.images.map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
     }))
   });
-  setSaveIndicator('saved');
 }
 
 function generateBoardThumb(){
@@ -1066,7 +1061,7 @@ function loadBoardIntoCanvas(board){
   document.getElementById('app').style.display='flex';
   document.getElementById('pen-ui-wrap').style.display='flex';
   document.getElementById('ur-wrap').style.display='flex';
-  resizeCanvas();buildPageStrip();syncUndoRedo();setSaveIndicator('saved');render();
+  resizeCanvas();buildPageStrip();syncUndoRedo();render();
 }
 
 function goHome(){
@@ -1170,7 +1165,6 @@ function eraseStrokeAt(vx, vy) {
   let hit = false;
   for (let i = arr.length - 1; i >= 0; i--) {
     const s = arr[i];
-    // Bypass eraser evaluating non-stroke elements
     if (s.tool === 'image' || s.src) continue;
     
     let mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity;
@@ -1215,7 +1209,6 @@ function onPointerDown(e){
   canvas.setPointerCapture(e.pointerId);
   const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
   
-  // Explicit hard partition for eraser to prevent coordinate corruption on drag strokes
   if (currentTool === 'eraser' && isPenOrMouse(e)) {
       drawing = true;
       const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
@@ -1283,7 +1276,6 @@ function onPointerUp(e){
       if(stroke.pts.length>0){
         if(snapOn){
            const snap=trySnapShape(stroke);
-           // Fallback cleanly commits the stroke if shape recognition returns null (wobbly geometry)
            commitStroke(snap?makeShapeStroke(snap,stroke):stroke);
         } else {
            commitStroke(stroke);
@@ -1534,8 +1526,7 @@ let hlSz = 26;
 function togglePalette(){
   _paletteOn=!_paletteOn;
   document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn);
-  // Re-sync pill color explicitly whenever palette drops down
-  document.getElementById('pen-pill').style.setProperty('--cur-col', currentTool === 'hl' ? hlCol : penCol);
+  document.getElementById('pen-pill').style.setProperty('--cur-col', currentTool === 'hl' ? hlCol : (currentTool === 'eraser' ? 'transparent' : penCol));
 }
 
 function setTool(t) {
@@ -1546,15 +1537,12 @@ function setTool(t) {
   const isHl = t === 'hl';
   const isEraser = t === 'eraser';
   
-  // Hide/Show Pen or HL colors appropriately
   document.querySelectorAll('.pen-col').forEach(el => el.style.display = (isHl || isEraser) ? 'none' : 'block');
   document.querySelectorAll('.hl-col').forEach(el => el.style.display = isHl ? 'block' : 'none');
   
-  // Condense sizes and sliders for Eraser tool
   document.querySelectorAll('.pen-ui-elem').forEach(el => el.style.display = (isHl || isEraser) ? 'none' : 'flex');
   document.querySelectorAll('.hl-ui-elem').forEach(el => el.style.display = isHl ? 'block' : 'none');
   
-  // Update Pen Pill dynamic dot colour
   document.getElementById('pen-pill').style.setProperty('--cur-col', isHl ? hlCol : (isEraser ? 'transparent' : penCol));
   
   const activeCol = isHl ? hlCol : penCol;
@@ -1913,7 +1901,6 @@ function insertLessonSlide(src, label){
     loadImgEl(imgObj);
     undoStacks[curPage].push(snapshotPage());
     if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
-    redoStacks[curPage]();
     images().push(imgObj);syncUndoRedo();render();scheduleAutoSave();
     showToast(label+' added to canvas');
   };
