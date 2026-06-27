@@ -283,7 +283,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .sec-drop-menu.open{display:block}
 .sec-drop-item{padding:8px 12px;font-size:12px;font-weight:500;color:white;
   cursor:pointer;border-radius:5px;transition:background .12s;white-space:nowrap}
-.sec-drop-item:hover{background:rgba(255,255,255,.12)}
+.sec-item:hover,.sec-drop-item:hover{background:rgba(255,255,255,.12)}
 
 </style>
 </head>
@@ -330,12 +330,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div class="badge">LA</div>
-    <button class="tbtn" onclick="editTitle()" title="Rename" style="min-width:26px;width:26px;padding:0; display:none;">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
     <span id="app-title" style="margin-left:8px">Untitled Board</span>
     <div style="flex:1"></div>
     <button class="tbtn" onclick="resetView()" title="Reset view">
@@ -739,7 +733,7 @@ function buildBoardCard(board){
   if(board.thumb){const im=new Image();im.onload=()=>thumb.getContext('2d').drawImage(im,0,0,320,200);im.src=board.thumb}
   const info=document.createElement('div');info.className='bc-info';
   const nm=document.createElement('div');nm.className='bc-name';nm.textContent=board.name||'Untitled Board';
-  const dt=document.createElement('div');dt.className='bc-date';dt.textContent=formatDate(board.updated);
+  const dt=document.createElement('div');nm.className='bc-date';dt.textContent=formatDate(board.updated);
   info.appendChild(nm);info.appendChild(dt);
   card.appendChild(thumb);card.appendChild(info);
   card.addEventListener('click',()=>openBoard(board.id));
@@ -949,8 +943,7 @@ function showWarn(title,msg,cb){
 let currentBoardId=null,boardCreated=Date.now(),saveTimer=null;
 let bgColour='#f7f9fd';
 
-function scheduleAutoSave(){clearTimeout(saveTimer);setSaveIndicator('saving');saveTimer=setTimeout(saveCurrentBoard,1500)}
-function setSaveIndicator(s){const el=document.getElementById('save-indicator');if(el)el.className=s}
+function scheduleAutoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCurrentBoard,1500)}
 
 async function saveCurrentBoard(){
   if(!currentBoardId)return;
@@ -1066,7 +1059,7 @@ function loadBoardIntoCanvas(board){
 
 function goHome(){
   const returnStack = navStack.slice();
-  showHome().then(()=>{ navStack=returnStack; renderHome(); });
+  showHome().then(()=>{ navStack=returnStack;renderHome();});
 }
 
 /* -- CANVAS ENGINE -- */
@@ -1241,7 +1234,7 @@ function onPointerMove(e){
   if(n===2){
     const pts=Object.values(activePointers),dist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
     const mid={x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top};
-    if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastTouchMid.y;render()}
+    if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastMid.y;render()}
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
     if (drawing && currentTool === 'eraser' && isPenOrMouse(e)) {
@@ -1901,6 +1894,7 @@ function insertLessonSlide(src, label){
     loadImgEl(imgObj);
     undoStacks[curPage].push(snapshotPage());
     if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
+    redoStacks[curPage]();
     images().push(imgObj);syncUndoRedo();render();scheduleAutoSave();
     showToast(label+' added to canvas');
   };
@@ -2034,14 +2028,6 @@ async function restoreFromDrive() {
 /* -- INIT -- */
 openDB().then(()=>showHome()).catch(()=>{showToast('Boards cannot be saved in private browsing');newBoard()});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();showToast('Tip: Add to home screen to install')});
-</script>
-<script>
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(reg=>{ if(reg.active&&reg.active.scriptURL.includes('sw.js')&&!reg.active.scriptURL.includes('sw2.js')) reg.unregister(); });
-  });
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw2.js').catch(()=>{})});
-}
 </script>
 </body>
 </html>
