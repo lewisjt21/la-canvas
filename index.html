@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -296,11 +297,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <div id="home-back" onclick="navUp()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </div>
-    <div id="home-breadcrumb">
+<div id="home-breadcrumb">
       <h1 id="home-title">LA Canvas</h1>
       <div class="bc-sub" id="home-sub" style="display:none"></div>
     </div>
     <div class="home-bar-btns" id="home-bar-btns">
+      
+      <button class="h-btn secondary" id="sync-btn" onclick="requestDriveAccess()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        Sync
+      </button>
       <button class="h-btn secondary" id="new-folder-btn" onclick="showNewFolder()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         Folder
@@ -457,6 +463,15 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
+<div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
+  <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:280px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);text-align:center">
+    <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;">Cloud Sync</h3>
+    <p style="color:rgba(255,255,255,.6);font-size:12px;margin:0;font-family:'Inter',sans-serif;line-height:1.4;">Choose an action. Restoring will overwrite this device's local boards with the cloud version.</p>
+    <button onclick="backupToDrive()" style="background:var(--yellow);color:var(--navy);border:none;border-radius:8px;height:36px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Backup to Drive (Push)</button>
+    <button onclick="restoreFromDrive()" style="background:rgba(255,255,255,.1);color:white;border:none;border-radius:8px;height:36px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">Restore from Drive (Pull)</button>
+    <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif;">Cancel</button>
+  </div>
+</div>
 <div id="toast"></div>
 
 <div id="lesson-modal">
@@ -1732,6 +1747,115 @@ function insertLessonSlide(src, label){
     showToast(label+' added to canvas');
   };
   tempImg.src=src;
+}
+
+/* =======================================================
+   GOOGLE DRIVE API SYNC
+======================================================= */
+const CLIENT_ID = '746424433103-pve9lotc0ksgh2vgbgsjief7a872hrkt.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+let tokenClient;
+let accessToken = null;
+
+// Initialize the Google Identity Services client
+window.onload = function () {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (tokenResponse) => {
+      if (tokenResponse && tokenResponse.access_token) {
+        accessToken = tokenResponse.access_token;
+        document.getElementById('sync-modal').style.display = 'flex';
+      }
+    },
+  });
+};
+
+function requestDriveAccess() {
+  if (!accessToken) {
+    tokenClient.requestAccessToken({prompt: 'consent'});
+  } else {
+    document.getElementById('sync-modal').style.display = 'flex';
+  }
+}
+
+function dbClear(store){return new Promise((r,j)=>{const q=stx(store,'readwrite').clear();q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
+
+async function getBackupFileId() {
+  const q = encodeURIComponent("name='lacanvas_backup.json' and 'appDataFolder' in parents and trashed=false");
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=appDataFolder`, {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  });
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
+}
+
+async function backupToDrive() {
+  document.getElementById('sync-modal').style.display = 'none';
+  showToast('Preparing backup...');
+  try {
+    const folders = await dbGetAll(FOLDERS);
+    const boards = await dbGetAll(BOARDS);
+    const payload = JSON.stringify({folders, boards, timestamp: Date.now()});
+    const file = new Blob([payload], {type: 'application/json'});
+    const metadata = {name: 'lacanvas_backup.json', parents: ['appDataFolder']};
+
+    let fileId = await getBackupFileId();
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+    form.append('file', file);
+
+    const url = fileId
+      ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const method = fileId ? 'PATCH' : 'POST';
+
+    const res = await fetch(url, {
+      method: method,
+      headers: { 'Authorization': 'Bearer ' + accessToken },
+      body: form
+    });
+
+    if (res.ok) showToast('Backup successful!');
+    else showToast('Backup failed.');
+  } catch(e) {
+    console.error(e);
+    showToast('Error backing up to cloud.');
+  }
+}
+
+async function restoreFromDrive() {
+  document.getElementById('sync-modal').style.display = 'none';
+  showToast('Checking for backup...');
+  try {
+    const fileId = await getBackupFileId();
+    if (!fileId) { showToast('No cloud backup found.'); return; }
+
+    showToast('Downloading backup...');
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { 'Authorization': 'Bearer ' + accessToken }
+    });
+    
+    if(!res.ok) { showToast('Failed to download file.'); return; }
+    
+    const data = await res.json();
+
+    if (data && data.folders && data.boards) {
+      await dbClear(FOLDERS);
+      await dbClear(BOARDS);
+      for (let f of data.folders) await dbPut(FOLDERS, f);
+      for (let b of data.boards) await dbPut(BOARDS, b);
+      showToast('Restore complete!');
+      
+      // Reset navigation and reload view
+      navStack = []; 
+      await renderHome();
+    } else {
+      showToast('Invalid backup data format.');
+    }
+  } catch(e) {
+     console.error(e); showToast('Error restoring from cloud.');
+  }
 }
 
 /* -- INIT -- */
