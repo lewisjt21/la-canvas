@@ -333,13 +333,13 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div class="badge">LA</div>
-    <button class="tbtn" onclick="editTitle()" title="Rename" style="min-width:26px;width:26px;padding:0">
+    <button class="tbtn" onclick="editTitle()" title="Rename" style="min-width:26px;width:26px;padding:0; display:none;">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
-    <span id="app-title" style="margin-left:2px">Untitled Board</span>
+    <span id="app-title" style="margin-left:8px">Untitled Board</span>
     <div style="flex:1"></div>
     <span id="save-indicator">●</span>
     <button class="tbtn" onclick="resetView()" title="Reset view">
@@ -479,8 +479,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:280px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);text-align:center">
     <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;">Cloud Sync</h3>
     <p style="color:rgba(255,255,255,.6);font-size:12px;margin:0;font-family:'Inter',sans-serif;line-height:1.4;">Choose an action. Restoring will overwrite this device's local boards with the cloud version.</p>
-    <button onclick="backupToDrive()" style="background:var(--yellow);color:var(--navy);border:none;border-radius:8px;height:36px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">Backup to Drive (Push)</button>
-    <button onclick="restoreFromDrive()" style="background:rgba(255,255,255,.1);color:white;border:none;border-radius:8px;height:36px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">Restore from Drive (Pull)</button>
+    <button onclick="backupToDrive()" style="background:var(--yellow);color:var(--navy);border:none;border-radius:8px;height:36px;font-weight:700;cursor:pointer;font-family:\'Inter\',sans-serif;">Backup to Drive (Push)</button>
+    <button onclick="restoreFromDrive()" style="background:rgba(255,255,255,.1);color:white;border:none;border-radius:8px;height:36px;font-weight:600;cursor:pointer;font-family:\'Inter\',sans-serif;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">Restore from Drive (Pull)</button>
     <button onclick="document.getElementById('sync-modal').style.display='none'" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif;">Cancel</button>
   </div>
 </div>
@@ -1170,6 +1170,9 @@ function eraseStrokeAt(vx, vy) {
   let hit = false;
   for (let i = arr.length - 1; i >= 0; i--) {
     const s = arr[i];
+    // Bypass eraser evaluating non-stroke elements
+    if (s.tool === 'image' || s.src) continue;
+    
     let mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity;
     for(let p of s.pts) {
       if(p.x < mnX) mnX = p.x; if(p.y < mnY) mnY = p.y;
@@ -1211,14 +1214,22 @@ function onPointerDown(e){
   activePointers[e.pointerId]={x:e.clientX,y:e.clientY};
   canvas.setPointerCapture(e.pointerId);
   const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
+  
+  // Explicit hard partition for eraser to prevent coordinate corruption on drag strokes
+  if (currentTool === 'eraser' && isPenOrMouse(e)) {
+      drawing = true;
+      const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
+      erasedInCurrentStroke = false;
+      if (eraseStrokeAt(v.x, v.y)) {
+          erasedInCurrentStroke = true;
+          render();
+      }
+      return;
+  }
+
   if(isPenOrMouse(e)&&n===1){
     drawing=true;const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
-    if(currentTool==='eraser'){
-      erasedInCurrentStroke=false;
-      if(eraseStrokeAt(v.x, v.y)){ erasedInCurrentStroke=true; render(); }
-    } else {
-      curStroke={col:currentTool==='hl'?hlCol:penCol,size:penSz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
-    }
+    curStroke={col:currentTool==='hl'?hlCol:penCol,size:penSz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
   } else if(!isPenOrMouse(e)){
     if(n===1){panning=true;panStart={x:e.clientX,y:e.clientY};panOffStart={x:offsetX,y:offsetY}}
     else if(n===2){
@@ -1240,7 +1251,17 @@ function onPointerMove(e){
     if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastTouchMid.y;render()}
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
-    if(drawing&&curStroke){const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render()}
+    if (drawing && currentTool === 'eraser' && isPenOrMouse(e)) {
+      const v = toVirt(e.clientX - rect.left, e.clientY - rect.top);
+      if (eraseStrokeAt(v.x, v.y)) {
+        erasedInCurrentStroke = true;
+        render();
+      }
+    } else if(drawing&&curStroke){
+      const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
+      curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});
+      render();
+    }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
 }
@@ -1260,8 +1281,13 @@ function onPointerUp(e){
     } else if (curStroke){
       const stroke=curStroke;curStroke=null;
       if(stroke.pts.length>0){
-        if(snapOn){const snap=trySnapShape(stroke);commitStroke(snap?makeShapeStroke(snap,stroke):stroke)}
-        else commitStroke(stroke);
+        if(snapOn){
+           const snap=trySnapShape(stroke);
+           // Fallback cleanly commits the stroke if shape recognition returns null (wobbly geometry)
+           commitStroke(snap?makeShapeStroke(snap,stroke):stroke);
+        } else {
+           commitStroke(stroke);
+        }
       } else render();
     }
   }
@@ -1354,7 +1380,7 @@ function trySnapShape(stroke){
 }
 function pathLength(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);return l}
 function rdp(pts,eps){if(pts.length<3)return pts.slice();const f=pts[0],la=pts[pts.length-1];let mx=0,mi=0;for(let i=1;i<pts.length-1;i++){const d=p2ld(pts[i],f,la);if(d>mx){mx=d;mi=i}}if(mx>eps)return rdp(pts.slice(0,mi+1),eps).slice(0,-1).concat(rdp(pts.slice(mi),eps));return[f,la]}
-function p2ld(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return Math.hypot(p.x-a.x,p.y-a.y);const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dxx*dx+dy*dy);return Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy))}
+function p2ld(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return Math.hypot(p.x-a.x,p.y-a.y);const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy);return Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy))}
 function makeShapeStroke(shape,orig){
   const base={col:orig.col,size:orig.size,erase:false};
   if(shape.type==='line')base.pts=[{x:shape.x1,y:shape.y1,p:.5},{x:shape.x2,y:shape.y2,p:.5}];
@@ -1505,7 +1531,12 @@ const ICONS = {
 
 let hlSz = 26; 
 
-function togglePalette(){_paletteOn=!_paletteOn;document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn)}
+function togglePalette(){
+  _paletteOn=!_paletteOn;
+  document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn);
+  // Re-sync pill color explicitly whenever palette drops down
+  document.getElementById('pen-pill').style.setProperty('--cur-col', currentTool === 'hl' ? hlCol : penCol);
+}
 
 function setTool(t) {
   currentTool = t;
@@ -1513,14 +1544,23 @@ function setTool(t) {
   document.getElementById('pill-icon').innerHTML = ICONS[t];
   
   const isHl = t === 'hl';
-  document.querySelectorAll('.pen-col').forEach(el => el.style.display = isHl ? 'none' : 'block');
+  const isEraser = t === 'eraser';
+  
+  // Hide/Show Pen or HL colors appropriately
+  document.querySelectorAll('.pen-col').forEach(el => el.style.display = (isHl || isEraser) ? 'none' : 'block');
   document.querySelectorAll('.hl-col').forEach(el => el.style.display = isHl ? 'block' : 'none');
   
-  document.querySelectorAll('.pen-ui-elem').forEach(el => el.style.display = isHl ? 'none' : 'flex');
+  // Condense sizes and sliders for Eraser tool
+  document.querySelectorAll('.pen-ui-elem').forEach(el => el.style.display = (isHl || isEraser) ? 'none' : 'flex');
   document.querySelectorAll('.hl-ui-elem').forEach(el => el.style.display = isHl ? 'block' : 'none');
   
+  // Update Pen Pill dynamic dot colour
+  document.getElementById('pen-pill').style.setProperty('--cur-col', isHl ? hlCol : (isEraser ? 'transparent' : penCol));
+  
   const activeCol = isHl ? hlCol : penCol;
-  document.querySelectorAll('.csw').forEach(el => el.classList.toggle('active', el.dataset.c === activeCol));
+  if (!isEraser) {
+     document.querySelectorAll('.csw').forEach(el => el.classList.toggle('active', el.dataset.c === activeCol));
+  }
   
   penSz = isHl ? hlSz : parseInt(document.querySelector('.psz.active')?.dataset.s || 3);
 }
@@ -1537,6 +1577,7 @@ function setCol(el) {
   }
   document.querySelectorAll('.csw').forEach(s=>s.classList.remove('active'));
   el.classList.add('active');
+  document.getElementById('pen-pill').style.setProperty('--cur-col', currentTool === 'hl' ? hlCol : penCol);
 }
 
 function setSz(el){
@@ -1636,7 +1677,6 @@ async function connectCameraDevice(deviceId) {
     showToast('4K camera feed active');
   } catch(e) {
     console.error('Direct camera execution fault:', e);
-    // Automatic adaptive safety fallback, falls to browser defaults preserving connection
     try {
         const fallbackConstraints = { video: { deviceId: { exact: deviceId } } };
         cameraStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
