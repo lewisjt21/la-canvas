@@ -393,9 +393,12 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <div class="csw hl-col" style="background:#66bb6a; border-color:#66bb6a; display:none" data-c="#66bb6a" title="Green"></div>
     <div class="csw hl-col" style="background:#ec407a; border-color:#ec407a; display:none" data-c="#ec407a" title="Pink"></div>
     <div class="pb-sep"></div>
-    <button class="psz active" data-s="3"><svg width="8" height="8"><circle cx="4" cy="4" r="2" fill="currentColor"/></svg></button>
-    <button class="psz" data-s="6"><svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg></button>
-    <button class="psz" data-s="12"><svg width="13" height="13"><circle cx="6.5" cy="6.5" r="5.5" fill="currentColor"/></svg></button>
+    
+    <button class="psz active pen-ui-elem" data-s="3"><svg width="8" height="8"><circle cx="4" cy="4" r="2" fill="currentColor"/></svg></button>
+    <button class="psz pen-ui-elem" data-s="6"><svg width="10" height="10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg></button>
+    <button class="psz pen-ui-elem" data-s="12"><svg width="13" height="13"><circle cx="6.5" cy="6.5" r="5.5" fill="currentColor"/></svg></button>
+    <input type="range" id="hl-slider" class="hl-ui-elem" min="10" max="60" value="26" style="display:none; width: 70px; margin: 0 4px; cursor: pointer; accent-color: var(--yellow);">
+    
     <div class="pb-sep"></div>
     <div class="bgsw active" style="background:#f7f9fd" data-bg="#f7f9fd" title="Default"></div>
     <div class="bgsw" style="background:#fffde7" data-bg="#fffde7" title="Pale yellow"></div>
@@ -981,16 +984,23 @@ function generateBoardThumb(){
     tctx.save();
     tctx.strokeStyle=s.col;
     if(s.tool==='hl'){
-        tctx.lineCap='butt';
+        tctx.lineCap='round';
+        tctx.lineJoin='round';
         tctx.globalAlpha=0.25;
-        tctx.lineWidth=26*sc;
+        tctx.globalCompositeOperation='multiply';
+        tctx.lineWidth=s.size*sc;
+        tctx.beginPath();
+        tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
+        for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
+        tctx.stroke();
     } else {
         tctx.lineCap='round';tctx.lineJoin='round';
         tctx.lineWidth=Math.max(1,s.size*sc);
+        tctx.beginPath();tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
+        for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
+        tctx.stroke();
     }
-    tctx.beginPath();tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
-    for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
-    tctx.stroke();tctx.restore();
+    tctx.restore();
   }
   return tc.toDataURL();
 }
@@ -1117,13 +1127,18 @@ function drawStroke(s){
     ctx.globalCompositeOperation = 'multiply';
     ctx.globalAlpha = 0.25; 
     ctx.strokeStyle = s.col;
-    ctx.lineCap = 'butt'; 
-    ctx.lineJoin = 'miter';
-    ctx.lineWidth = 26 * scale; 
+    ctx.lineCap = 'round'; 
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = s.size * scale; 
+    
+    ctx.beginPath(); 
+    const p0 = toScreen(s.pts[0].x, s.pts[0].y);
+    ctx.moveTo(p0.x, p0.y); 
     for(let i=1; i<s.pts.length; i++){
-      const a=toScreen(s.pts[i-1].x, s.pts[i-1].y), b=toScreen(s.pts[i].x, s.pts[i].y);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      const p = toScreen(s.pts[i].x, s.pts[i].y);
+      ctx.lineTo(p.x, p.y); 
     }
+    ctx.stroke();
   } else {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1.0;
@@ -1458,8 +1473,8 @@ async function exportPDF(){
       
       pdf.setDrawColor(s.col);
       if(s.tool === 'hl') {
-        pdf.setLineCap('butt');
-        pdf.setLineWidth(26);
+        pdf.setLineCap('round');
+        pdf.setLineWidth(s.size);
         for(let i=1; i<s.pts.length; i++){
           pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
         }
@@ -1490,6 +1505,8 @@ const ICONS = {
   eraser: '<path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20"/>'
 };
 
+let hlSz = 26; 
+
 function togglePalette(){_paletteOn=!_paletteOn;document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn)}
 
 function setTool(t) {
@@ -1497,12 +1514,17 @@ function setTool(t) {
   document.querySelectorAll('.pact[data-tool]').forEach(el => el.classList.toggle('active-tool', el.dataset.tool === t));
   document.getElementById('pill-icon').innerHTML = ICONS[t];
   
-  if(t === 'pen' || t === 'hl') {
-    document.querySelectorAll('.pen-col').forEach(el => el.style.display = t==='pen' ? 'block' : 'none');
-    document.querySelectorAll('.hl-col').forEach(el => el.style.display = t==='hl' ? 'block' : 'none');
-    const activeCol = t==='pen' ? penCol : hlCol;
-    document.querySelectorAll('.csw').forEach(el => el.classList.toggle('active', el.dataset.c === activeCol));
-  }
+  const isHl = t === 'hl';
+  document.querySelectorAll('.pen-col').forEach(el => el.style.display = isHl ? 'none' : 'block');
+  document.querySelectorAll('.hl-col').forEach(el => el.style.display = isHl ? 'block' : 'none');
+  
+  document.querySelectorAll('.pen-ui-elem').forEach(el => el.style.display = isHl ? 'none' : 'flex');
+  document.querySelectorAll('.hl-ui-elem').forEach(el => el.style.display = isHl ? 'block' : 'none');
+  
+  const activeCol = isHl ? hlCol : penCol;
+  document.querySelectorAll('.csw').forEach(el => el.classList.toggle('active', el.dataset.c === activeCol));
+  
+  penSz = isHl ? hlSz : parseInt(document.querySelector('.psz.active')?.dataset.s || 3);
 }
 
 function setCol(el) {
@@ -1519,7 +1541,12 @@ function setCol(el) {
   el.classList.add('active');
 }
 
-function setSz(el){document.querySelectorAll('.psz').forEach(s=>s.classList.remove('active'));el.classList.add('active');penSz=parseInt(el.dataset.s)}
+function setSz(el){
+  document.querySelectorAll('.psz').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  if (currentTool !== 'hl') penSz=parseInt(el.dataset.s);
+}
+
 function setBg(el){
     try { applyBgColour(el.dataset.bg,true); } catch(e) { console.warn(e); }
 }
@@ -1530,6 +1557,11 @@ document.getElementById('pen-bar').addEventListener('click', e => {
   else if(e.target.closest('.csw')) setCol(e.target.closest('.csw'));
   else if(e.target.closest('.psz')) setSz(e.target.closest('.psz'));
   else if(e.target.closest('.bgsw')) setBg(e.target.closest('.bgsw'));
+});
+
+document.getElementById('hl-slider').addEventListener('input', e => {
+  hlSz = parseInt(e.target.value);
+  if (currentTool === 'hl') penSz = hlSz;
 });
 
 let cameraStream = null;
@@ -1547,13 +1579,14 @@ async function toggleCamera() {
     video.style.display = 'none';
     showToast('Document camera off');
   } else {
-    showToast('Requesting 4K camera access...');
+    showToast('Requesting 1080p camera access...');
     try {
       cameraStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: "environment",
-          width: { ideal: 3840 },
-          height: { ideal: 2160 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
         } 
       });
       video.srcObject = cameraStream;
@@ -1579,11 +1612,6 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
    4. html2canvas screenshots it (same document   works perfectly)
    5. Div removed, dataURL stored
 ======================================================= */
-/* LESSON IMPORT -- PDF-based
-   Uses PDF.js to render each page of an exported lesson PDF to a canvas.
-   Pages are mapped to sections via a simple picker. Clean, reliable,
-   MathJax renders perfectly since it's already baked into the PDF.
-*/
 let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
 const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
@@ -1720,8 +1748,6 @@ async function importLesson(){
   showToast('Lesson imported -- use section buttons to add slides');
 }
 
-
-/* -- SECTION DROPDOWNS (built after lesson import) -- */
 function buildSectionDropdowns(){
   const container=document.getElementById('lesson-btns');
   if(!container)return;
