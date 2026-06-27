@@ -528,17 +528,14 @@ function openDB(){
     const req=indexedDB.open(DB_NAME,DB_VER);
     req.onupgradeneeded=e=>{
       const d=e.target.result;
-      // Boards store
       if(!d.objectStoreNames.contains(BOARDS)){
         const s=d.createObjectStore(BOARDS,{keyPath:'id'});
         s.createIndex('updated','updated',{unique:false});
         s.createIndex('folderId','folderId',{unique:false});
       } else {
-        // Add folderId index if upgrading
         const s=e.target.transaction.objectStore(BOARDS);
         if(!s.indexNames.contains('folderId')) s.createIndex('folderId','folderId',{unique:false});
       }
-      // Folders store
       if(!d.objectStoreNames.contains(FOLDERS)){
         const s=d.createObjectStore(FOLDERS,{keyPath:'id'});
         s.createIndex('parentId','parentId',{unique:false});
@@ -555,7 +552,6 @@ function dbPut(store,rec){return new Promise((r,j)=>{const q=stx(store,'readwrit
 function dbDelete(store,id){return new Promise((r,j)=>{const q=stx(store,'readwrite').delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
 function dbGetByIndex(store,index,val){
   return new Promise((r,j)=>{
-    // IndexedDB cannot query for null keys via index  fall back to getAll+filter
     if(val===null||val===undefined){
       const q=stx(store,'readonly').getAll();
       q.onsuccess=()=>r(q.result.filter(rec=>rec[index]===null||rec[index]===undefined));
@@ -571,18 +567,9 @@ function dbGetAll(store){return new Promise((r,j)=>{const q=stx(store,'readonly'
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
 
 /* -- NAVIGATION STATE -- */
-// navStack: [] = root, [classId] = inside class folder, [classId, topicId] = topic (boards visible)
 let navStack=[];
-
-function currentFolderId(){
-  // Boards are in topic folders (depth 2). If we're at depth < 2, New Board goes to null (Unassigned)
-  return navStack.length>=2 ? navStack[navStack.length-1] : null;
-}
-
-function currentParentId(){
-  // New folder's parent = current folder (for class folders: null, for topic folders: classId)
-  return navStack.length>0 ? navStack[navStack.length-1] : null;
-}
+function currentFolderId(){return navStack.length>=2 ? navStack[navStack.length-1] : null;}
+function currentParentId(){return navStack.length>0 ? navStack[navStack.length-1] : null;}
 
 async function showHome(){
   if(currentBoardId){clearTimeout(saveTimer);await saveCurrentBoard()}
@@ -612,7 +599,6 @@ async function renderHome(){
   const empty=document.getElementById('home-empty');
   content.innerHTML='';
 
-  // Update breadcrumb
   const backBtn=document.getElementById('home-back');
   const titleEl=document.getElementById('home-title');
   const subEl=document.getElementById('home-sub');
@@ -623,24 +609,20 @@ async function renderHome(){
     subEl.style.display='none';
   } else {
     backBtn.style.display='flex';
-    // Build breadcrumb text
     const names=await Promise.all(navStack.map(id=>dbGet(FOLDERS,id).then(f=>f?f.name:'?')));
     titleEl.textContent=names[names.length-1];
     subEl.style.display=names.length>1?'block':'none';
     subEl.textContent=names.slice(0,-1).join('   ');
   }
 
-  // What to show: if depth<2 show subfolders + (at root) also Unassigned; if depth=2 show boards
   const depth=navStack.length;
   const parentId=depth>0?navStack[depth-1]:null;
 
-  // Show/hide new folder button   only available at depth 0 (class) and depth 1 (topic)
   document.getElementById('new-folder-btn').style.display=depth<2?'flex':'none';
 
   let hasContent=false;
 
   if(depth<2){
-    // Show subfolders of current level
     const folders=await dbGetByIndex(FOLDERS,'parentId',parentId);
     folders.sort((a,b)=>a.name.localeCompare(b.name));
 
@@ -657,7 +639,6 @@ async function renderHome(){
       content.appendChild(grid);
     }
 
-    // At root, also show Unassigned boards section
     if(depth===0){
       const unassigned=await dbGetByIndex(BOARDS,'folderId',null);
       unassigned.sort((a,b)=>b.updated-a.updated);
@@ -672,7 +653,6 @@ async function renderHome(){
       }
     }
   } else {
-    // depth===2: show boards in this topic folder
     const folderId=navStack[1];
     const boards=await dbGetByIndex(BOARDS,'folderId',folderId);
     boards.sort((a,b)=>b.updated-a.updated);
@@ -694,7 +674,6 @@ async function renderHome(){
 }
 
 /* -- FOLDER CARDS -- */
-/* -- FOLDER COLOURS -- */
 const FOLDER_COLOURS = [
   '#FFC425','#4A90D9','#E05C5C','#5CB85C','#9B59B6',
   '#E67E22','#1ABC9C','#E91E8C','#00BCD4','#8BC34A',
@@ -724,14 +703,12 @@ function buildFolderCard(folder){
     '</div>'
   ].join('');
   card.addEventListener('click',()=>navInto(folder.id));
-  // Long press for folder options
   let lpTimer;
   card.addEventListener('pointerdown',e=>{
     lpTimer=setTimeout(()=>{e.preventDefault();showFolderCtx(folder,e)},600);
   },{passive:true});
   card.addEventListener('pointerup',()=>clearTimeout(lpTimer));
   card.addEventListener('pointermove',()=>clearTimeout(lpTimer));
-  // Async count
   countFolderContents(folder.id).then(n=>{
     const el=document.getElementById('fc-'+folder.id);
     if(el)el.textContent=n===0?'Empty':n===1?'1 item':`${n} items`;
@@ -740,7 +717,6 @@ function buildFolderCard(folder){
 }
 
 async function countFolderContents(folderId){
-  // Count subfolders + boards
   const [subs,boards]=await Promise.all([
     dbGetByIndex(FOLDERS,'parentId',folderId),
     dbGetByIndex(BOARDS,'folderId',folderId)
@@ -759,7 +735,6 @@ function buildBoardCard(board){
   info.appendChild(nm);info.appendChild(dt);
   card.appendChild(thumb);card.appendChild(info);
   card.addEventListener('click',()=>openBoard(board.id));
-  // Long press for board options
   let lpTimer,isLP=false;
   card.addEventListener('pointerdown',e=>{
     isLP=false;
@@ -788,7 +763,6 @@ function showBoardCtx(board,e){
   menu.style.cssText=`display:block;background:var(--navydim);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px;box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:180px;position:fixed;z-index:300;`;
   positionMenu(menu,e.clientX,e.clientY);
   menu.classList.add('active');
-  // Close on outside tap
   setTimeout(()=>document.addEventListener('pointerdown',closeCtxOnOutside,{once:true}),100);
 }
 
@@ -801,7 +775,6 @@ function showFolderCtx(folder,e){
 }
 
 function positionMenu(menu,x,y){
-  // Position near tap, keep on screen
   menu.style.left=x+'px';menu.style.top=y+'px';
   requestAnimationFrame(()=>{
     const r=menu.getBoundingClientRect();
@@ -820,7 +793,6 @@ function closeCtxOnOutside(e){
   if(!menus.some(id=>document.getElementById(id).contains(e.target)))closeCtxMenu();
 }
 
-/* -- BOARD CONTEXT ACTIONS -- */
 function renameBoard(){
   if(!ctxTargetBoard)return;closeCtxMenu();
   const name=prompt('Board name:',ctxTargetBoard.name||'Untitled Board');
@@ -842,10 +814,8 @@ let movingBoard=null;
 async function openMoveSheet(){
   movingBoard=ctxTargetBoard;closeCtxMenu();
   const list=document.getElementById('move-list');list.innerHTML='';
-  // Option: Unassigned
   const ua=buildMoveItem(' ','Unassigned',null,movingBoard.folderId===null);
   list.appendChild(ua);
-  // Build tree: class folders -> topic folders
   const classFolders=await dbGetByIndex(FOLDERS,'parentId',null);
   classFolders.sort((a,b)=>a.name.localeCompare(b.name));
   for(const cf of classFolders){
@@ -878,7 +848,7 @@ function buildMoveItem(icon,name,folderId,selected,isHeader=false,indented=false
 function closeMoveSheet(){document.getElementById('move-sheet').classList.remove('active');movingBoard=null}
 
 /* -- FOLDER ACTIONS -- */
-let folderSheetMode='create'; // 'create' or 'rename'
+let folderSheetMode='create';
 
 function showNewFolder(){
   folderSheetMode='create';
@@ -930,7 +900,6 @@ document.getElementById('folder-name-input').addEventListener('keydown',e=>{if(e
 
 async function promptDeleteFolder(){
   if(!ctxTargetFolder)return;const folder=ctxTargetFolder;closeCtxMenu();
-  // Check if folder has contents
   const[subs,boards]=await Promise.all([
     dbGetByIndex(FOLDERS,'parentId',folder.id),
     dbGetByIndex(BOARDS,'folderId',folder.id)
@@ -940,7 +909,7 @@ async function promptDeleteFolder(){
     showWarn(
       'Folder is not empty',
       `"${escHtml(folder.name)}" contains ${count} item${count!==1?'s':''}. Delete the contents first before deleting this folder.`,
-      null // no confirm action   just informational
+      null 
     );
     document.getElementById('warn-ok').style.display='none';
     document.getElementById('warn-cancel').textContent='OK';
@@ -948,7 +917,6 @@ async function promptDeleteFolder(){
   }
   showWarn('Delete "'+escHtml(folder.name)+'"?','This folder will be permanently deleted.',async()=>{
     await dbDelete(FOLDERS,folder.id);
-    // If we were inside this folder, pop nav
     if(navStack.includes(folder.id)){
       while(navStack.length&&navStack[navStack.length-1]!==folder.id)navStack.pop();
       navStack.pop();
@@ -980,7 +948,6 @@ async function saveCurrentBoard(){
   if(!currentBoardId)return;
   const title=document.getElementById('app-title').textContent;
   const thumb=generateBoardThumb();
-  // Get the current folderId from the stored record
   const existing=await dbGet(BOARDS,currentBoardId);
   await dbPut(BOARDS,{
     id:currentBoardId,name:title,
@@ -989,7 +956,7 @@ async function saveCurrentBoard(){
     thumb,bgColour,
     lessonSections: lessonSections,
     pages:pageData.map(pg=>({
-      strokes:pg.strokes.map(s=>({col:s.col,size:s.size,tool:s.tool||'pen',erase:s.erase,pts:s.pts})),
+      strokes:pg.strokes.map(s=>({col:s.col,size:s.size,tool:s.tool||'pen',pts:s.pts})),
       images:pg.images.map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
     }))
   });
@@ -1010,8 +977,17 @@ function generateBoardThumb(){
   tctx.fillStyle='rgba(31,56,100,0.1)';
   for(let x=0;x<W;x+=10)for(let y=0;y<H;y+=10){tctx.beginPath();tctx.arc(x,y,.6,0,Math.PI*2);tctx.fill()}
   for(const s of allStrokes){
-    if(s.erase||s.pts.length<2)continue;
-    tctx.save();tctx.lineCap='round';tctx.lineJoin='round';tctx.strokeStyle=s.col;tctx.lineWidth=Math.max(1,s.size*sc);
+    if(s.pts.length<2)continue;
+    tctx.save();
+    tctx.strokeStyle=s.col;
+    if(s.tool==='hl'){
+        tctx.lineCap='butt';
+        tctx.globalAlpha=0.25;
+        tctx.lineWidth=26*sc;
+    } else {
+        tctx.lineCap='round';tctx.lineJoin='round';
+        tctx.lineWidth=Math.max(1,s.size*sc);
+    }
     tctx.beginPath();tctx.moveTo(s.pts[0].x*sc+ox,s.pts[0].y*sc+oy);
     for(let i=1;i<s.pts.length;i++)tctx.lineTo(s.pts[i].x*sc+ox,s.pts[i].y*sc+oy);
     tctx.stroke();tctx.restore();
@@ -1021,12 +997,10 @@ function generateBoardThumb(){
 
 async function newBoard(){
   const id=genId();boardCreated=Date.now();
-  const folderId=currentFolderId(); // null if not in a topic folder
+  const folderId=currentFolderId(); 
 
-  // Auto-name: "ClassName TopicName Lesson N"
   let boardName='Untitled Board';
   if(navStack.length>=2){
-    // We're inside a topic folder   build name from class + topic + lesson number
     const [classFolder, topicFolder] = await Promise.all([
       dbGet(FOLDERS, navStack[0]),
       dbGet(FOLDERS, navStack[1])
@@ -1037,7 +1011,6 @@ async function newBoard(){
       boardName = `${classFolder.name} ${topicFolder.name} Lesson ${lessonNum}`;
     }
   } else if(navStack.length===1){
-    // Inside a class folder but no topic   use class name + lesson number
     const classFolder = await dbGet(FOLDERS, navStack[0]);
     if(classFolder){
       const existing = await dbGetByIndex(BOARDS,'folderId',folderId);
@@ -1079,7 +1052,6 @@ function loadBoardIntoCanvas(board){
 }
 
 function goHome(){
-  // Save current nav position so we return to the right folder
   const returnStack = navStack.slice();
   showHome().then(()=>{ navStack=returnStack; renderHome(); });
 }
@@ -1095,6 +1067,7 @@ let lastTouchDist=null,lastTouchMid=null;
 let panning=false,panStart=null,panOffStart=null;
 let activePointers={},zoomTimer=null;
 let snapOn=false,_paletteOn=false;
+let erasedInCurrentStroke = false;
 const DOT_SPACING=22,DOT_RADIUS=1.2;
 
 function toVirt(sx,sy){return{x:(sx-offsetX)/scale,y:(sy-offsetY)/scale}}
@@ -1138,28 +1111,59 @@ function drawDots(W,H){
 
 function drawStroke(s){
   if(s.pts.length<2)return;
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.save();
   
-  if(s.tool === 'eraser' || s.erase){
-    ctx.globalCompositeOperation='destination-out';ctx.strokeStyle='rgba(0,0,0,1)';ctx.lineWidth=s.size*scale*6;
-    ctx.beginPath();const p0=toScreen(s.pts[0].x,s.pts[0].y);ctx.moveTo(p0.x,p0.y);
-    for(let i=1;i<s.pts.length;i++){const p=toScreen(s.pts[i].x,s.pts[i].y);ctx.lineTo(p.x,p.y)}
-    ctx.stroke();
-  } else {
-    ctx.globalCompositeOperation = (s.tool === 'hl') ? 'multiply' : 'source-over';
-    ctx.globalAlpha = (s.tool === 'hl') ? 0.4 : 1.0;
+  if (s.tool === 'hl') {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.25; 
     ctx.strokeStyle = s.col;
-    for(let i=1;i<s.pts.length;i++){
+    ctx.lineCap = 'butt'; 
+    ctx.lineJoin = 'miter';
+    ctx.lineWidth = 26 * scale; 
+    for(let i=1; i<s.pts.length; i++){
+      const a=toScreen(s.pts[i-1].x, s.pts[i-1].y), b=toScreen(s.pts[i].x, s.pts[i].y);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+    ctx.strokeStyle = s.col;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for(let i=1; i<s.pts.length; i++){
       const prev=s.pts[i-1],curr=s.pts[i];
       const avgP=((prev.p||.5)+(curr.p||.5))/2;
-      let w=s.size*(0.4+avgP*1.6)*scale;
-      if(s.tool === 'hl') w = s.size * scale * 3.5; 
-      ctx.lineWidth = Math.max(1.5, w); 
+      const w=s.size*(0.4+avgP*1.6)*scale;
+      ctx.lineWidth=Math.max(1.5,w);
       const a=toScreen(prev.x,prev.y),b=toScreen(curr.x,curr.y);
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     }
   }
   ctx.restore();
+}
+
+function eraseStrokeAt(vx, vy) {
+  const HIT = 15 / scale;
+  const arr = strokes();
+  let hit = false;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const s = arr[i];
+    let mnX = Infinity, mnY = Infinity, mxX = -Infinity, mxY = -Infinity;
+    for(let p of s.pts) {
+      if(p.x < mnX) mnX = p.x; if(p.y < mnY) mnY = p.y;
+      if(p.x > mxX) mxX = p.x; if(p.y > mxY) mxY = p.y;
+    }
+    if (vx < mnX - HIT || vx > mxX + HIT || vy < mnY - HIT || vy > mxY + HIT) continue;
+    
+    for (let j = 0; j < s.pts.length; j++) {
+      if (Math.hypot(s.pts[j].x - vx, s.pts[j].y - vy) < HIT + (s.size * 2)) {
+        arr.splice(i, 1);
+        hit = true;
+        break;
+      }
+    }
+  }
+  return hit;
 }
 
 function applyZoom(ns,px,py){
@@ -1187,7 +1191,12 @@ function onPointerDown(e){
   const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
   if(isPenOrMouse(e)&&n===1){
     drawing=true;const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
-    curStroke={col:currentTool==='hl'?hlCol:penCol,size:penSz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
+    if(currentTool==='eraser'){
+      erasedInCurrentStroke=false;
+      if(eraseStrokeAt(v.x, v.y)){ erasedInCurrentStroke=true; render(); }
+    } else {
+      curStroke={col:currentTool==='hl'?hlCol:penCol,size:penSz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
+    }
   } else if(!isPenOrMouse(e)){
     if(n===1){panning=true;panStart={x:e.clientX,y:e.clientY};panOffStart={x:offsetX,y:offsetY}}
     else if(n===2){
@@ -1209,7 +1218,14 @@ function onPointerMove(e){
     if(lastTouchDist!==null){applyZoom(scale*(dist/lastTouchDist),mid.x,mid.y);offsetX+=mid.x-lastTouchMid.x;offsetY+=mid.y-lastTouchMid.y;render()}
     lastTouchDist=dist;lastTouchMid=mid;
   } else if(n===1){
-    if(drawing&&curStroke){const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render()}
+    if(drawing){
+      const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
+      if(currentTool==='eraser'){
+        if(eraseStrokeAt(v.x, v.y)){ erasedInCurrentStroke=true; render(); }
+      } else if (curStroke) {
+        curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});render();
+      }
+    }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
 }
@@ -1218,12 +1234,21 @@ function onPointerUp(e){
   delete activePointers[e.pointerId];
   const n=Object.keys(activePointers).length;
   if(n<2){lastTouchDist=null;lastTouchMid=null}
-  if(drawing&&curStroke){
-    const stroke=curStroke;curStroke=null;drawing=false;
-    if(stroke.pts.length>0){
-      if(snapOn){const snap=trySnapShape(stroke);commitStroke(snap?makeShapeStroke(snap,stroke):stroke)}
-      else commitStroke(stroke);
-    } else render();
+  if(drawing){
+    drawing=false;
+    if(currentTool==='eraser'){
+      if(erasedInCurrentStroke){
+        undoStacks[curPage].push(snapshotPage());
+        if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
+        redoStacks[curPage]=[]; syncUndoRedo(); scheduleAutoSave();
+      }
+    } else if (curStroke){
+      const stroke=curStroke;curStroke=null;
+      if(stroke.pts.length>0){
+        if(snapOn){const snap=trySnapShape(stroke);commitStroke(snap?makeShapeStroke(snap,stroke):stroke)}
+        else commitStroke(stroke);
+      } else render();
+    }
   }
   if(n===0){panning=false;panStart=null}
 }
@@ -1367,16 +1392,15 @@ async function exportPDF(){
   const{jsPDF}=window.jspdf;
 
   let pdf = null;
-  const pad = 40; // 40 pixel padding around the edges of your work
+  const pad = 40; 
 
   for(let pi=0; pi<pageData.length; pi++){
     statusEl.textContent=`Exporting page ${pi+1} of ${pageData.length}...`;
     const pg=pageData[pi];
 
-    // 1. Calculate the exact Bounding Box of your content
     let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
     for(const s of pg.strokes) {
-      if(s.erase) continue; // Prevent invisible eraser strokes from expanding the page size
+      if(s.tool==='eraser' || s.erase) continue; 
       for(const p of s.pts){
         if(p.x<mnX)mnX=p.x; if(p.y<mnY)mnY=p.y; if(p.x>mxX)mxX=p.x; if(p.y>mxY)mxY=p.y;
       }
@@ -1388,7 +1412,6 @@ async function exportPDF(){
 
     let bW, bH, oX, oY;
     if(mnX===Infinity){
-      // Fallback dimensions if a page is entirely blank
       bW = 1200; bH = 800; oX = 0; oY = 0; 
     } else {
       bW = (mxX - mnX) + pad * 2;
@@ -1397,7 +1420,6 @@ async function exportPDF(){
       oY = mnY - pad;
     }
 
-    // 2. Build a custom PDF page that snaps to your bounding box exactly
     const orientation = bW > bH ? 'landscape' : 'portrait';
     if(!pdf){
       pdf = new jsPDF({ orientation, unit: 'px', format: [bW, bH] });
@@ -1405,11 +1427,9 @@ async function exportPDF(){
       pdf.addPage([bW, bH], orientation);
     }
 
-    // 3. Draw Background
     pdf.setFillColor(bgColour);
     pdf.rect(0, 0, bW, bH, 'F');
 
-    // 4. Draw Vector Dot Grid
     pdf.setFillColor('#d1d8e6'); 
     const ds = DOT_SPACING;
     const gx0 = Math.floor(oX/ds)*ds;
@@ -1423,7 +1443,6 @@ async function exportPDF(){
       }
     }
 
-    // 5. Embed Original High-Res Images Natively
     for(const img of pg.images){
       if(!img._el) continue;
       try {
@@ -1432,22 +1451,20 @@ async function exportPDF(){
       } catch(e) { console.error('Image embed error', e); }
     }
 
-    // 6. Draw Pure Vector Mathematical Strokes
     pdf.setLineCap('round');
     pdf.setLineJoin('round');
     for(const s of pg.strokes){
       if(s.pts.length < 2) continue;
       
-      if(s.erase){
-        // Simulate eraser by drawing a thick line mimicking the background color
-        pdf.setDrawColor(bgColour);
-        pdf.setLineWidth(s.size * 6);
+      pdf.setDrawColor(s.col);
+      if(s.tool === 'hl') {
+        pdf.setLineCap('butt');
+        pdf.setLineWidth(26);
         for(let i=1; i<s.pts.length; i++){
           pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
         }
       } else {
-        // Draw standard ink retaining pressure variance 
-        pdf.setDrawColor(s.col);
+        pdf.setLineCap('round');
         for(let i=1; i<s.pts.length; i++){
           const prev = s.pts[i-1], curr = s.pts[i];
           const avgP = ((prev.p||0.5) + (curr.p||0.5)) / 2;
@@ -1507,7 +1524,6 @@ function setBg(el){
     try { applyBgColour(el.dataset.bg,true); } catch(e) { console.warn(e); }
 }
 
-// Switched to 'click' to prevent canvas event swallowing on touch screens
 document.getElementById('pen-bar').addEventListener('click', e => {
   const toolBtn = e.target.closest('.pact[data-tool]');
   if (toolBtn) setTool(toolBtn.dataset.tool);
@@ -1531,10 +1547,15 @@ async function toggleCamera() {
     video.style.display = 'none';
     showToast('Document camera off');
   } else {
-    showToast('Requesting camera access...');
+    showToast('Requesting 4K camera access...');
     try {
-      // Requests the rear-facing camera by default
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      cameraStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: "environment",
+          width: { ideal: 3840 },
+          height: { ideal: 2160 }
+        } 
+      });
       video.srcObject = cameraStream;
       video.style.display = 'block';
       showToast('Document camera active');
@@ -1567,11 +1588,10 @@ let lessonSections = {};
 const SECTION_ORDER  = ['Starter','I Do','We Do','You Do'];
 const SECTION_LABELS = {'Starter':'Starter','I Do':'I Do','We Do':'We Do','You Do':'You Do'};
 
-// PDF.js CDN
 const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let pdfPages = [];       // rendered dataURLs for each PDF page
+let pdfPages = [];       
 let pdfPageCount = 0;
 
 function openLessonModal(){
@@ -1588,7 +1608,6 @@ function closeLessonModal(){
   document.getElementById('lesson-modal').classList.remove('active');
 }
 
-// Wire up file input
 document.getElementById('lesson-pdf-input').addEventListener('change', async e=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -1596,7 +1615,6 @@ document.getElementById('lesson-pdf-input').addEventListener('change', async e=>
   document.getElementById('lesson-progress').style.display = 'block';
   document.getElementById('lesson-progress').textContent = 'Loading PDF.js...';
 
-  // Load PDF.js
   if(!window.pdfjsLib){
     await loadScript(PDFJS_URL);
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
@@ -1604,7 +1622,6 @@ document.getElementById('lesson-pdf-input').addEventListener('change', async e=>
 
   document.getElementById('lesson-progress').textContent = 'Rendering pages...';
 
-  // Read PDF
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await window.pdfjsLib.getDocument({data: arrayBuffer}).promise;
   pdfPageCount = pdf.numPages;
@@ -1614,20 +1631,17 @@ document.getElementById('lesson-pdf-input').addEventListener('change', async e=>
     document.getElementById('lesson-progress').textContent = 'Rendering page ' + i + ' of ' + pdfPageCount + '...';
     const page = await pdf.getPage(i);
     
-    // Increased scale to 4.0 for crystal clear resolution
     const viewport = page.getViewport({scale: 4.0}); 
     const oc = document.createElement('canvas');
     oc.width  = viewport.width;
     oc.height = viewport.height;
     
     const oc_ctx = oc.getContext('2d');
-    // Fill white background to ensure clean JPEG conversion
     oc_ctx.fillStyle = '#ffffff';
     oc_ctx.fillRect(0, 0, oc.width, oc.height);
     
     await page.render({canvasContext: oc_ctx, viewport}).promise;
     
-    // Use high-quality JPEG instead of PNG to prevent IndexedDB storage bloat at this new high resolution
     pdfPages.push(oc.toDataURL('image/jpeg', 0.92)); 
   }
 
@@ -1640,7 +1654,6 @@ function buildPageMapUI(){
   const list = document.getElementById('page-map-list');
   list.innerHTML = '';
 
-  // Smart defaults: guess section from page number
   const defaults = guessDefaults(pdfPageCount);
 
   pdfPages.forEach((src, i)=>{
@@ -1658,7 +1671,6 @@ function buildPageMapUI(){
     const sel = document.createElement('select');
     sel.className = 'page-map-select';
     sel.dataset.page = i;
-    // Options: one per section + Skip
     ['Skip','Starter','I Do','We Do','You Do'].forEach(opt=>{
       const o = document.createElement('option');
       o.value = opt; o.textContent = opt;
@@ -1722,7 +1734,6 @@ function buildSectionDropdowns(){
     return;
   }
 
-  // Re-import button
   const reBtn=document.createElement('button');
   reBtn.className='tbtn';reBtn.title='Re-import lesson';
   reBtn.style.cssText='min-width:22px;width:22px;padding:0;font-size:11px';
@@ -1808,7 +1819,6 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 let tokenClient;
 let accessToken = null;
 
-// Initialize the Google Identity Services client
 window.onload = function () {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
@@ -1851,7 +1861,6 @@ async function backupToDrive() {
 
     let fileId = await getBackupFileId();
 
-    // STEP 1: If the file doesn't exist, create an empty shell first.
     if (!fileId) {
       const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
@@ -1870,7 +1879,6 @@ async function backupToDrive() {
       fileId = fileData.id;
     }
 
-    // STEP 2: Push the raw data directly into the file ID (works for new and existing files).
     const uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
       method: 'PATCH',
       headers: {
@@ -1918,7 +1926,6 @@ async function restoreFromDrive() {
       for (let b of data.boards) await dbPut(BOARDS, b);
       showToast('Restore complete!');
       
-      // Reset navigation and reload view
       navStack = []; 
       await renderHome();
     } else {
@@ -1935,7 +1942,6 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();showToast('
 </script>
 <script>
 if('serviceWorker' in navigator){
-  // Unregister old sw.js if present
   navigator.serviceWorker.getRegistrations().then(regs=>{
     regs.forEach(reg=>{ if(reg.active&&reg.active.scriptURL.includes('sw.js')&&!reg.active.scriptURL.includes('sw2.js')) reg.unregister(); });
   });
