@@ -485,13 +485,12 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<div id="camera-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
-  <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:280px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);text-align:center">
-    <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;">Document Camera Mode</h3>
-    <p style="color:rgba(255,255,255,.6);font-size:12px;margin:0;font-family:'Inter',sans-serif;line-height:1.4;">Select a video profile optimized for your current task.</p>
-    <button onclick="startCamera('4k')" style="background:var(--yellow);color:var(--navy);border:none;border-radius:8px;height:36px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">4K High-Res (Static Clarity)</button>
-    <button onclick="startCamera('1080p')" style="background:rgba(255,255,255,.1);color:white;border:none;border-radius:8px;height:36px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">1080p 30FPS (Live Motion)</button>
-    <button onclick="document.getElementById('camera-modal').style.display='none'" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif;">Cancel</button>
+<div id="camera-picker-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
+  <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:min(90vw,360px);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-height:80vh">
+    <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;text-align:center">Select Camera Source</h3>
+    <p style="color:rgba(255,255,255,.6);font-size:12px;margin:0;font-family:'Inter',sans-serif;line-height:1.4;text-align:center">Choose the video capture peripheral you wish to route to the visualiser canvas.</p>
+    <div id="camera-list-options" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto"></div>
+    <button onclick="closeCameraPicker()" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif">Cancel</button>
   </div>
 </div>
 
@@ -522,6 +521,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 <input type="file" id="lesson-pdf-input" accept="application/pdf" style="display:none">
 
 <script>
+/* =======================================================
+   LA CANVAS   Folder file system
+   DB stores:
+     folders: { id, name, parentId, created }
+              parentId=null = class level
+              parentId=someId = topic level (child of class)
+     boards:  { id, name, folderId, created, updated, thumb, bgColour, pages }
+              folderId=null = Unassigned
+======================================================= */
+
 /* -- INDEXEDDB -- */
 const DB_NAME='la-canvas-db', DB_VER=2, BOARDS='boards', FOLDERS='folders';
 let db=null;
@@ -1291,7 +1300,7 @@ function redo(){
   render();syncUndoRedo();scheduleAutoSave();
 }
 
-/* -- IMAGE INSERT -- */
+/* -- FOLDERS/DATA SYSTEM -- */
 const imgInput=document.getElementById('img-input');
 imgInput.addEventListener('change',e=>{
   const file=e.target.files[0];if(!file)return;
@@ -1319,7 +1328,6 @@ imgInput.addEventListener('change',e=>{
 });
 function loadImgEl(imgObj){const el=new Image();el.src=imgObj.src;el.onload=()=>render();imgObj._el=el}
 
-/* -- BACKGROUND COLOUR -- */
 function applyBgColour(col,save=true){
   bgColour=col;document.getElementById('canvas-wrap').style.background=col;
   document.documentElement.style.setProperty('--bg-colour',col);
@@ -1327,7 +1335,6 @@ function applyBgColour(col,save=true){
   render();if(save)scheduleAutoSave();
 }
 
-/* -- SHAPE RECOGNITION -- */
 function toggleSnap(){snapOn=!snapOn;document.getElementById('snap-fab').classList.toggle('active',snapOn);showToast(snapOn?'Shape recognition on':'Shape recognition off')}
 function trySnapShape(stroke){
   const pts=stroke.pts;if(pts.length<6||stroke.erase)return null;
@@ -1347,7 +1354,7 @@ function trySnapShape(stroke){
 }
 function pathLength(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);return l}
 function rdp(pts,eps){if(pts.length<3)return pts.slice();const f=pts[0],la=pts[pts.length-1];let mx=0,mi=0;for(let i=1;i<pts.length-1;i++){const d=p2ld(pts[i],f,la);if(d>mx){mx=d;mi=i}}if(mx>eps)return rdp(pts.slice(0,mi+1),eps).slice(0,-1).concat(rdp(pts.slice(mi),eps));return[f,la]}
-function p2ld(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return Math.hypot(p.x-a.x,p.y-a.y);const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy);return Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy))}
+function p2ld(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return Math.hypot(p.x-a.x,p.y-a.y);const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dxx*dx+dy*dy);return Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy))}
 function makeShapeStroke(shape,orig){
   const base={col:orig.col,size:orig.size,erase:false};
   if(shape.type==='line')base.pts=[{x:shape.x1,y:shape.y1,p:.5},{x:shape.x2,y:shape.y2,p:.5}];
@@ -1357,7 +1364,6 @@ function makeShapeStroke(shape,orig){
   return base;
 }
 
-/* -- PAGES -- */
 function addPage(){
   pageData.push({strokes:[],images:[]});undoStacks.push([]);redoStacks.push([]);
   curPage=pageData.length-1;buildPageStrip();resetView();showToast('Page '+(curPage+1)+' added');scheduleAutoSave();
@@ -1382,7 +1388,6 @@ function clearPage(){
   pageData[curPage]={strokes:[],images:[]};render();syncUndoRedo();scheduleAutoSave();
 }
 
-/* -- TITLE EDIT -- */
 function editTitle(){
   const cur=document.getElementById('app-title').textContent;
   const name=prompt('Board name:',cur);
@@ -1557,7 +1562,9 @@ document.getElementById('hl-slider').addEventListener('input', e => {
   if (currentTool === 'hl') penSz = hlSz;
 });
 
+/* -- DOCUMENT CAMERA DEVICE ENUMERATION CONTROLLER -- */
 let cameraStream = null;
+
 function toggleCamera() {
   if (cameraStream) {
     cameraStream.getTracks().forEach(t => t.stop());
@@ -1565,50 +1572,81 @@ function toggleCamera() {
     document.getElementById('camera-overlay').style.display = 'none';
     showToast('Document camera off');
   } else {
-    document.getElementById('camera-modal').style.display = 'flex';
+    showToast('Scanning USB/video hardware interfaces...');
+    enumerateAndShowCameras();
   }
 }
 
-async function startCamera(mode) {
-  document.getElementById('camera-modal').style.display = 'none';
+async function enumerateAndShowCameras() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    
+    if (videoDevices.length === 0) {
+      showToast('No video input peripherals detected');
+      return;
+    }
+
+    const listContainer = document.getElementById('camera-list-options');
+    listContainer.innerHTML = '';
+
+    videoDevices.forEach((dev, idx) => {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'background:var(--navylt);color:white;border:1px solid rgba(255,255,255,.25);border-radius:8px;height:40px;font-weight:600;cursor:pointer;font-family:\'Inter\',sans-serif;display:flex;align-items:center;justify-content:center;padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .13s';
+      btn.textContent = dev.label || `Video Peripheral ${idx + 1}`;
+      
+      btn.onmouseover = () => btn.style.background = 'var(--navy)';
+      btn.onmouseout = () => btn.style.background = 'var(--navylt)';
+      
+      btn.onclick = () => connectCameraDevice(dev.deviceId);
+      listContainer.appendChild(btn);
+    });
+
+    document.getElementById('camera-picker-modal').style.display = 'flex';
+  } catch(e) {
+    console.error('Device enumeration failure:', e);
+    showToast('Hardware access authorization error');
+  }
+}
+
+function closeCameraPicker() {
+  document.getElementById('camera-picker-modal').style.display = 'none';
+}
+
+async function connectCameraDevice(deviceId) {
+  closeCameraPicker();
+  showToast('Negotiating 4K resolution stream...');
   const video = document.getElementById('camera-overlay');
   
-  let constraints = {
-    video: { facingMode: "environment" }
+  const constraints = {
+    video: {
+      deviceId: { exact: deviceId },
+      width: { ideal: 3840 },
+      height: { ideal: 2160 }
+    }
   };
-  
-  if (mode === '4k') {
-    showToast('Requesting 4K camera access...');
-    constraints.video.width = { ideal: 3840 };
-    constraints.video.height = { ideal: 2160 };
-  } else {
-    showToast('Requesting 1080p 30FPS stream...');
-    constraints.video.width = { ideal: 1920 };
-    constraints.video.height = { ideal: 1080 };
-    constraints.video.frameRate = { exact: 30 };
-  }
-  
+
   try {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(t => t.stop());
+    }
     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = cameraStream;
     video.style.display = 'block';
-    showToast('Document camera active');
+    showToast('4K camera feed active');
   } catch(e) {
-    console.error('Camera Error:', e);
-    if (mode === '1080p') {
-      showToast('Strict 30FPS failed. Attempting auto-negotiation...');
-      try {
-        constraints.video.frameRate = { ideal: 30 };
-        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    console.error('Direct camera execution fault:', e);
+    // Automatic adaptive safety fallback, falls to browser defaults preserving connection
+    try {
+        const fallbackConstraints = { video: { deviceId: { exact: deviceId } } };
+        cameraStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
         video.srcObject = cameraStream;
         video.style.display = 'block';
-        showToast('Document camera active (Adaptive FPS)');
-        return;
-      } catch(fallbackErr) {
-        console.error('Fallback Camera Error:', fallbackErr);
-      }
+        showToast('Camera feed active (Adaptive Res)');
+    } catch(fallbackErr) {
+        console.error('Critical camera fallback error:', fallbackErr);
+        showToast('Incompatible hardware stream selected');
     }
-    showToast('Camera access denied or unsupported format');
   }
 }
 
@@ -1835,7 +1873,7 @@ function insertLessonSlide(src, label){
     loadImgEl(imgObj);
     undoStacks[curPage].push(snapshotPage());
     if(undoStacks[curPage].length>60)undoStacks[curPage].shift();
-    redoStacks[curPage]=[];
+    redoStacks[curPage]();
     images().push(imgObj);syncUndoRedo();render();scheduleAutoSave();
     showToast(label+' added to canvas');
   };
