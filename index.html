@@ -1799,37 +1799,34 @@ async function backupToDrive() {
     const payload = JSON.stringify({folders, boards, timestamp: Date.now()});
 
     let fileId = await getBackupFileId();
-    let res;
 
+    // THE FOOLPROOF WORKAROUND: If an old backup exists, delete it first.
     if (fileId) {
-      // OVERWRITE EXISTING FILE: Send raw data (uploadType=media)
-      res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: payload
+      const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + accessToken }
       });
-    } else {
-      // CREATE NEW FILE: Send metadata + data (uploadType=multipart)
-      const file = new Blob([payload], {type: 'application/json'});
-      const metadata = {name: 'lacanvas_backup.json', parents: ['appDataFolder']};
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-      form.append('file', file);
-
-      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + accessToken },
-        body: form
-      });
+      if (!delRes.ok && delRes.status !== 404) {
+        console.warn('Failed to delete old backup, proceeding anyway.');
+      }
     }
+
+    // CREATE NEW FILE: Use the highly reliable POST method every time.
+    const file = new Blob([payload], {type: 'application/json'});
+    const metadata = {name: 'lacanvas_backup.json', parents: ['appDataFolder']};
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+    form.append('file', file);
+
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken },
+      body: form
+    });
 
     if (res.ok) {
       showToast('Backup successful!');
     } else if (res.status === 401) {
-      // TOKEN EXPIRED: Clear the old token and alert the user
       accessToken = null;
       showToast('Session expired. Tap Sync to reconnect.');
     } else {
@@ -1841,6 +1838,7 @@ async function backupToDrive() {
     showToast('Error backing up to cloud.');
   }
 }
+
 async function restoreFromDrive() {
   document.getElementById('sync-modal').style.display = 'none';
   showToast('Checking for backup...');
