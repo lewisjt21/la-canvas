@@ -1797,33 +1797,50 @@ async function backupToDrive() {
     const folders = await dbGetAll(FOLDERS);
     const boards = await dbGetAll(BOARDS);
     const payload = JSON.stringify({folders, boards, timestamp: Date.now()});
-    const file = new Blob([payload], {type: 'application/json'});
-    const metadata = {name: 'lacanvas_backup.json', parents: ['appDataFolder']};
 
     let fileId = await getBackupFileId();
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-    form.append('file', file);
+    let res;
 
-    const url = fileId
-      ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
-      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-    const method = fileId ? 'PATCH' : 'POST';
+    if (fileId) {
+      // OVERWRITE EXISTING FILE: Send raw data (uploadType=media)
+      res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: payload
+      });
+    } else {
+      // CREATE NEW FILE: Send metadata + data (uploadType=multipart)
+      const file = new Blob([payload], {type: 'application/json'});
+      const metadata = {name: 'lacanvas_backup.json', parents: ['appDataFolder']};
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+      form.append('file', file);
 
-    const res = await fetch(url, {
-      method: method,
-      headers: { 'Authorization': 'Bearer ' + accessToken },
-      body: form
-    });
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        body: form
+      });
+    }
 
-    if (res.ok) showToast('Backup successful!');
-    else showToast('Backup failed.');
+    if (res.ok) {
+      showToast('Backup successful!');
+    } else if (res.status === 401) {
+      // TOKEN EXPIRED: Clear the old token and alert the user
+      accessToken = null;
+      showToast('Session expired. Tap Sync to reconnect.');
+    } else {
+      showToast('Backup failed. Check console.');
+      console.error('API Error:', await res.text());
+    }
   } catch(e) {
     console.error(e);
     showToast('Error backing up to cloud.');
   }
 }
-
 async function restoreFromDrive() {
   document.getElementById('sync-modal').style.display = 'none';
   showToast('Checking for backup...');
