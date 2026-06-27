@@ -555,7 +555,7 @@ function dbPut(store,rec){return new Promise((r,j)=>{const q=stx(store,'readwrit
 function dbDelete(store,id){return new Promise((r,j)=>{const q=stx(store,'readwrite').delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error)})}
 function dbGetByIndex(store,index,val){
   return new Promise((r,j)=>{
-    // IndexedDB cannot query for null keys via index   fall back to getAll+filter
+    // IndexedDB cannot query for null keys via index  fall back to getAll+filter
     if(val===null||val===undefined){
       const q=stx(store,'readonly').getAll();
       q.onsuccess=()=>r(q.result.filter(rec=>rec[index]===null||rec[index]===undefined));
@@ -989,7 +989,7 @@ async function saveCurrentBoard(){
     thumb,bgColour,
     lessonSections: lessonSections,
     pages:pageData.map(pg=>({
-      strokes:pg.strokes.map(s=>({col:s.col,size:s.size,erase:s.erase,pts:s.pts})),
+      strokes:pg.strokes.map(s=>({col:s.col,size:s.size,tool:s.tool||'pen',erase:s.erase,pts:s.pts})),
       images:pg.images.map(img=>({x:img.x,y:img.y,w:img.w,h:img.h,src:img.src}))
     }))
   });
@@ -1061,7 +1061,7 @@ function loadBoardIntoCanvas(board){
   const raw=board.pages||[{strokes:[],images:[]}];
   pageData=raw.map(pg=>{
     if(Array.isArray(pg))return{strokes:pg.map(s=>({...s})),images:[]};
-    return{strokes:(pg.strokes||[]).map(s=>({...s})),images:(pg.images||[]).map(img=>({...img,_el:null}))};
+    return{strokes:(pg.strokes||[]).map(s=>({...s, tool: s.tool || (s.erase ? 'eraser' : 'pen')})),images:(pg.images||[]).map(img=>({...img,_el:null}))};
   });
   if(!pageData.length)pageData=[{strokes:[],images:[]}];
   pageData.forEach(pg=>pg.images.forEach(img=>loadImgEl(img)));
@@ -1467,36 +1467,83 @@ async function exportPDF(){
 function loadScript(src){return new Promise((r,j)=>{if(document.querySelector(`script[src="${src}"]`)){r();return}const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
 
 /* -- TOOL CONTROLS -- */
+const ICONS = {
+  pen: '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>',
+  hl: '<path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
+  eraser: '<path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20"/>'
+};
+
 function togglePalette(){_paletteOn=!_paletteOn;document.getElementById('pen-bar').classList.toggle('hidden',!_paletteOn)}
-function toggleErase(){eraseOn=!eraseOn;document.getElementById('erase-btn').classList.toggle('erase-on',eraseOn)}
-function setCol(el){document.querySelectorAll('.csw').forEach(s=>s.classList.remove('active'));el.classList.add('active');penCol=el.dataset.c;eraseOn=false;document.getElementById('erase-btn').classList.remove('erase-on');document.getElementById('pen-pill').style.setProperty('--cur-col',penCol)}
+
+function setTool(t) {
+  currentTool = t;
+  document.querySelectorAll('.pact[data-tool]').forEach(el => el.classList.toggle('active-tool', el.dataset.tool === t));
+  document.getElementById('pill-icon').innerHTML = ICONS[t];
+  
+  if(t === 'pen' || t === 'hl') {
+    document.querySelectorAll('.pen-col').forEach(el => el.style.display = t==='pen' ? 'block' : 'none');
+    document.querySelectorAll('.hl-col').forEach(el => el.style.display = t==='hl' ? 'block' : 'none');
+    const activeCol = t==='pen' ? penCol : hlCol;
+    document.querySelectorAll('.csw').forEach(el => el.classList.toggle('active', el.dataset.c === activeCol));
+  }
+}
+
+function setCol(el) {
+  if (currentTool === 'eraser') setTool('pen'); 
+  const col = el.dataset.c;
+  if (el.classList.contains('hl-col')) {
+    hlCol = col;
+    setTool('hl');
+  } else {
+    penCol = col;
+    setTool('pen');
+  }
+  document.querySelectorAll('.csw').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+}
+
 function setSz(el){document.querySelectorAll('.psz').forEach(s=>s.classList.remove('active'));el.classList.add('active');penSz=parseInt(el.dataset.s)}
-function setBg(el){applyBgColour(el.dataset.bg,true)}
+function setBg(el){
+    try { applyBgColour(el.dataset.bg,true); } catch(e) { console.warn(e); }
+}
 
-document.getElementById('pen-bar').addEventListener('pointerup',e=>{
-  if(e.target.closest('.csw'))setCol(e.target.closest('.csw'));
-  else if(e.target.closest('.psz'))setSz(e.target.closest('.psz'));
-  else if(e.target.closest('#erase-btn'))toggleErase();
-  else if(e.target.closest('#clear-btn'))clearPage();
-  else if(e.target.closest('.bgsw'))setBg(e.target.closest('.bgsw'));
+// Switched to 'click' to prevent canvas event swallowing on touch screens
+document.getElementById('pen-bar').addEventListener('click', e => {
+  const toolBtn = e.target.closest('.pact[data-tool]');
+  if (toolBtn) setTool(toolBtn.dataset.tool);
+  else if(e.target.closest('.csw')) setCol(e.target.closest('.csw'));
+  else if(e.target.closest('.psz')) setSz(e.target.closest('.psz'));
+  else if(e.target.closest('.bgsw')) setBg(e.target.closest('.bgsw'));
 });
 
-const penWrap=document.getElementById('pen-ui-wrap');
-let isUIDrag=false,uiDragged=false,uiDragSX,uiDragSY,uiStartL,uiStartT;
-penWrap.addEventListener('pointerdown',e=>{
-  if(e.target.closest('#pen-bar'))return;
-  isUIDrag=true;uiDragged=false;uiDragSX=e.clientX;uiDragSY=e.clientY;
-  const r=penWrap.getBoundingClientRect();uiStartL=r.left;uiStartT=r.top;penWrap.setPointerCapture(e.pointerId);
-});
-penWrap.addEventListener('pointermove',e=>{
-  if(!isUIDrag)return;const dx=e.clientX-uiDragSX,dy=e.clientY-uiDragSY;
-  if(Math.abs(dx)>5||Math.abs(dy)>5){uiDragged=true;penWrap.style.left=(uiStartL+dx)+'px';penWrap.style.top=(uiStartT+dy)+'px';penWrap.style.bottom='auto'}
-});
-penWrap.addEventListener('pointerup',e=>{
-  if(!isUIDrag)return;isUIDrag=false;penWrap.releasePointerCapture(e.pointerId);
-  if(!uiDragged)togglePalette();
-});
-document.getElementById('pen-pill').style.setProperty('--cur-col',penCol);
+let cameraStream = null;
+async function toggleCamera() {
+  const video = document.getElementById('camera-overlay');
+  
+  if (!video) {
+    showToast('Error: Camera overlay element missing.');
+    return;
+  }
+  
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+    video.style.display = 'none';
+    showToast('Document camera off');
+  } else {
+    showToast('Requesting camera access...');
+    try {
+      // Requests the rear-facing camera by default
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      video.srcObject = cameraStream;
+      video.style.display = 'block';
+      showToast('Document camera active');
+    } catch(e) {
+      console.error('Camera Error:', e);
+      showToast('Camera access denied by browser');
+    }
+  }
+}
 
 /* -- TOAST -- */
 let toastTimer;
