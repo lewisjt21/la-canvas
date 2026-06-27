@@ -1800,41 +1800,46 @@ async function backupToDrive() {
 
     let fileId = await getBackupFileId();
 
-    // THE FOOLPROOF WORKAROUND: If an old backup exists, delete it first.
-    if (fileId) {
-      const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + accessToken }
+    // STEP 1: If the file doesn't exist, create an empty shell first.
+    if (!fileId) {
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: 'lacanvas_backup.json',
+          parents: ['appDataFolder']
+        })
       });
-      if (!delRes.ok && delRes.status !== 404) {
-        console.warn('Failed to delete old backup, proceeding anyway.');
-      }
+      
+      if (!createRes.ok) throw new Error('Failed to create empty file shell.');
+      const fileData = await createRes.json();
+      fileId = fileData.id;
     }
 
-    // CREATE NEW FILE: Use the highly reliable POST method every time.
-    const file = new Blob([payload], {type: 'application/json'});
-    const metadata = {name: 'lacanvas_backup.json', parents: ['appDataFolder']};
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-    form.append('file', file);
-
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + accessToken },
-      body: form
+    // STEP 2: Push the raw data directly into the file ID (works for new and existing files).
+    const uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: payload
     });
 
-    if (res.ok) {
+    if (uploadRes.ok) {
       showToast('Backup successful!');
-    } else if (res.status === 401) {
+    } else if (uploadRes.status === 401) {
       accessToken = null;
       showToast('Session expired. Tap Sync to reconnect.');
     } else {
       showToast('Backup failed. Check console.');
-      console.error('API Error:', await res.text());
+      console.error('API Error:', await uploadRes.text());
     }
   } catch(e) {
-    console.error(e);
+    console.error('Full Error Trace:', e);
     showToast('Error backing up to cloud.');
   }
 }
