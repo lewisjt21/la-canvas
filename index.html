@@ -477,7 +477,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Camera Hardware Selection Picker Sheet -->
 <div id="camera-picker-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
   <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:min(90vw,360px);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-height:80vh">
     <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;text-align:center">Select Camera Source</h3>
@@ -1098,7 +1097,7 @@ function loadBoardIntoCanvas(board){
   undoStacks=pageData.map(()=>[]);redoStacks=pageData.map(()=>[]);curPage=0;
   const title=board.name||'Untitled Board';
   document.getElementById('app-title').textContent=title;document.title=title+'   LA Canvas';
-  scale=1;offsetX=0;offsetY=0;
+  let scale=2,offsetX=0,offsetY=0;
   document.getElementById('home').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('pen-ui-wrap').style.display='flex';
@@ -1121,7 +1120,7 @@ const activeCtx=activeCanvas?activeCanvas.getContext('2d'):null;
 let drawing=false,currentTool='pen',penCol='#1a1a2e',hlCol='#42a5f5',penSz=3;
 let pageData=[{strokes:[],images:[]}],curPage=0,curStroke=null;
 let undoStacks=[[]],redoStacks=[[]];
-let scale=1,offsetX=0,offsetY=0;
+let scale=2,offsetX=0,offsetY=0;
 let lastTouchDist=null,lastTouchMid=null;
 let panning=false,panStart=null,panOffStart=null;
 let activePointers={},zoomTimer=null;
@@ -1287,14 +1286,14 @@ function eraseStrokeAt(vx, vy) {
 }
 
 function applyZoom(ns,px,py){
-  ns=Math.min(4,Math.max(.3,ns)); 
+  ns=Math.min(3,Math.max(1,ns)); 
   offsetX=px-(px-offsetX)*(ns/scale);offsetY=py-(py-offsetY)*(ns/scale);
   scale=ns;showZoomPill();render();
 }
 
-function resetView(){scale=1;offsetX=0;offsetY=0;showZoomPill();render()}
+function resetView(){scale=2;offsetX=0;offsetY=0;showZoomPill();render()}
 function showZoomPill(){
-  const p=document.getElementById('zoom-pill');p.textContent=Math.round(scale*100)+'%';
+  const p=document.getElementById('zoom-pill');p.textContent=Math.round(((scale - 1) / 2) * 100)+'%';
   p.classList.add('visible');clearTimeout(zoomTimer);zoomTimer=setTimeout(()=>p.classList.remove('visible'),1500);
 }
 
