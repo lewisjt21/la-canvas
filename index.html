@@ -91,11 +91,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 /* Move sheet */
 #move-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(22,42,78,.75);
-  align-items:flex-end;justify-content:center}
+  align-items:center;justify-content:center}
 #move-sheet.active{display:flex}
-#move-box{background:var(--navydim);border-radius:16px 16px 0 0;width:100%;max-width:480px;
-  max-height:70vh;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);
-  border-top:1px solid rgba(255,255,255,.12)}
+#move-box{background:var(--navydim);border-radius:14px;width:min(90vw,400px);
+  max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,.12)}
 #move-box-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
   border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
 #move-box-head h3{font-size:14px;font-weight:700;color:white}
@@ -418,7 +418,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   <div class="ctx-item" id="ctx-move" onclick="openMoveSheet()">
     <span class="ctx-icon">📂</span> Move to folder
   </div>
-  <div class="ctx-item" id="ctx-rename-board" onclick="renameBoard()">
+  <div class="ctx-item" id="ctx-rename-board" onclick="renameBoardPrompt()">
     <span class="ctx-icon">✏️</span> Rename
   </div>
   <div class="ctx-item danger" id="ctx-delete-board" onclick="promptDeleteBoard()">
@@ -779,6 +779,7 @@ function formatDate(ts){
 
 /* -- CONTEXT MENUS -- */
 let ctxTargetBoard=null,ctxTargetFolder=null;
+let sheetTargetType = ''; 
 
 function showBoardCtx(board,e){
   ctxTargetBoard=board;
@@ -809,20 +810,29 @@ function positionMenu(menu,x,y){
 function closeCtxMenu(){
   document.getElementById('ctx-menu').style.display='none';
   document.getElementById('folder-ctx').style.display='none';
-  ctxTargetBoard=null;ctxTargetFolder=null;
 }
 function closeCtxOnOutside(e){
   const menus=['ctx-menu','folder-ctx'];
   if(!menus.some(id=>document.getElementById(id).contains(e.target)))closeCtxMenu();
 }
 
-function renameBoard(){
-  if(!ctxTargetBoard)return;closeCtxMenu();
-  const name=prompt('Board name:',ctxTargetBoard.name||'Untitled Board');
-  if(name&&name.trim()){
-    ctxTargetBoard.name=name.trim();
-    dbPut(BOARDS,{...ctxTargetBoard}).then(()=>renderHome());
-  }
+function renameBoardPrompt(){
+  if(!ctxTargetBoard)return;
+  closeCtxMenu();
+  sheetTargetType='board';
+  document.getElementById('folder-sheet-title').textContent='Rename Board';
+  document.getElementById('folder-ok-btn').textContent='Rename';
+  const input=document.getElementById('folder-name-input');
+  input.value=ctxTargetBoard.name||'Untitled Board';
+  input.placeholder='Board name';
+  document.getElementById('folder-sheet').classList.add('active');
+  setTimeout(()=>input.focus(),100);
+}
+
+function editTitle(){
+  const cur=document.getElementById('app-title').textContent;
+  const name=prompt('Board name:',cur);
+  if(name&&name.trim()){const n=name.trim();document.getElementById('app-title').textContent=n;document.title=n+'   LA Canvas';scheduleAutoSave()}
 }
 
 function promptDeleteBoard(){
@@ -874,40 +884,56 @@ function closeMoveSheet(){document.getElementById('move-sheet').classList.remove
 let folderSheetMode='create';
 
 function showNewFolder(){
+  sheetTargetType='folder';
   folderSheetMode='create';
   document.getElementById('folder-sheet-title').textContent='New Folder';
   document.getElementById('folder-ok-btn').textContent='Create';
-  document.getElementById('folder-name-input').value='';
+  const input=document.getElementById('folder-name-input');
+  input.value='';
+  input.placeholder='Folder name';
   document.getElementById('folder-sheet').classList.add('active');
-  setTimeout(()=>document.getElementById('folder-name-input').focus(),100);
+  setTimeout(()=>input.focus(),100);
 }
 
 function renameFolderPrompt(){
   if(!ctxTargetFolder)return;closeCtxMenu();
+  sheetTargetType='folder';
   folderSheetMode='rename';
   document.getElementById('folder-sheet-title').textContent='Rename Folder';
   document.getElementById('folder-ok-btn').textContent='Rename';
-  document.getElementById('folder-name-input').value=ctxTargetFolder.name;
+  const input=document.getElementById('folder-name-input');
+  input.value=ctxTargetFolder.name;
+  input.placeholder='Folder name';
   document.getElementById('folder-sheet').classList.add('active');
-  setTimeout(()=>document.getElementById('folder-name-input').focus(),100);
+  setTimeout(()=>input.focus(),100);
 }
 
 async function confirmFolderAction(){
   const name=document.getElementById('folder-name-input').value.trim();
   if(!name){showToast('Please enter a name');return}
-  if(folderSheetMode==='create'){
-    const parentId=currentParentId();
-    const newId=genId();
-    const colour=await nextFolderColour(parentId);
-    await dbPut(FOLDERS,{id:newId,name,parentId,created:Date.now(),colour});
-    closeFolderSheet();
-    await navInto(newId);
-    return;
+  
+  if(sheetTargetType==='board'){
+    if(ctxTargetBoard){
+      ctxTargetBoard.name=name;
+      await dbPut(BOARDS,{...ctxTargetBoard});
+      showToast('Board renamed');
+    }
   } else {
-    if(!ctxTargetFolder)return;
-    ctxTargetFolder.name=name;
-    await dbPut(FOLDERS,{...ctxTargetFolder});
-    showToast('Folder renamed');
+    if(folderSheetMode==='create'){
+      const parentId=currentParentId();
+      const newId=genId();
+      const colour=await nextFolderColour(parentId);
+      await dbPut(FOLDERS,{id:newId,name,parentId,created:Date.now(),colour});
+      closeFolderSheet();
+      await navInto(newId);
+      return;
+    } else {
+      if(ctxTargetFolder){
+        ctxTargetFolder.name=name;
+        await dbPut(FOLDERS,{...ctxTargetFolder});
+        showToast('Folder renamed');
+      }
+    }
   }
   closeFolderSheet();
   await renderHome();
@@ -916,7 +942,6 @@ async function confirmFolderAction(){
 function closeFolderSheet(){
   document.getElementById('folder-sheet').classList.remove('active');
   document.getElementById('folder-name-input').value='';
-  ctxTargetFolder=null;
 }
 
 document.getElementById('folder-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')confirmFolderAction()});
@@ -1470,12 +1495,6 @@ function clearPage(){
   if(!strokes().length&&!images().length){showToast('Page already empty');return}
   undoStacks[curPage].push(snapshotPage());redoStacks[curPage]=[];
   pageData[curPage]={strokes:[],images:[]};render();syncUndoRedo();scheduleAutoSave();
-}
-
-function editTitle(){
-  const cur=document.getElementById('app-title').textContent;
-  const name=prompt('Board name:',cur);
-  if(name&&name.trim()){const n=name.trim();document.getElementById('app-title').textContent=n;document.title=n+'   LA Canvas';scheduleAutoSave()}
 }
 
 /* -- PDF EXPORT -- */
