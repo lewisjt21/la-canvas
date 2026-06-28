@@ -168,6 +168,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg-colour);transition:background .3s}
 #main-canvas{position:absolute;inset:0;touch-action:none}
+#active-canvas{position:absolute;inset:0;pointer-events:none;touch-action:none}
 
 /* PEN UI */
 #pen-ui-wrap{position:fixed;left:16px;bottom:16px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none}
@@ -357,6 +358,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
   <div id="canvas-wrap">
     <canvas id="main-canvas"></canvas>
+    <canvas id="active-canvas"></canvas>
     <video id="camera-overlay" autoplay playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:80; background:#000; pointer-events:none;"></video>
     <div id="zoom-pill">100%</div>
   </div>
@@ -475,7 +477,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Camera Hardware Selection Picker Sheet -->
 <div id="camera-picker-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
   <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:min(90vw,360px);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-height:80vh">
     <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;text-align:center">Select Camera Source</h3>
@@ -1087,6 +1088,10 @@ function goHome(){
 /* -- CANVAS ENGINE -- */
 const canvas=document.getElementById('main-canvas');
 const ctx=canvas?canvas.getContext('2d'):null;
+
+const activeCanvas=document.getElementById('active-canvas');
+const activeCtx=activeCanvas?activeCanvas.getContext('2d'):null;
+
 let drawing=false,currentTool='pen',penCol='#1a1a2e',hlCol='#42a5f5',penSz=3;
 let pageData=[{strokes:[],images:[]}],curPage=0,curStroke=null;
 let undoStacks=[[]],redoStacks=[[]];
@@ -1122,7 +1127,14 @@ function resizeCanvas(){
   const dpr=window.devicePixelRatio||1,w=canvas.parentElement.offsetWidth,h=canvas.parentElement.offsetHeight;
   canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
   canvas.style.width=w+'px';canvas.style.height=h+'px';
-  ctx.setTransform(dpr,0,0,dpr,0,0);render();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  
+  if(activeCanvas&&activeCtx){
+    activeCanvas.width=Math.round(w*dpr);activeCanvas.height=Math.round(h*dpr);
+    activeCanvas.style.width=w+'px';activeCanvas.style.height=h+'px';
+    activeCtx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  render();
 }
 window.addEventListener('resize',resizeCanvas);
 
@@ -1134,7 +1146,6 @@ function render(){
   drawDots(W,H);
   for(const img of images()){if(!img._el||!img._el.complete)continue;const s=toScreen(img.x,img.y);ctx.drawImage(img._el,s.x,s.y,img.w*scale,img.h*scale)}
   for(const s of strokes())drawStroke(s);
-  if(curStroke&&curStroke.pts.length>1)drawStroke(curStroke);
 }
 
 function drawDots(W,H){
@@ -1148,79 +1159,41 @@ function drawDots(W,H){
   ctx.restore();
 }
 
-function drawStroke(s){
+function drawStroke(s, targetCtx = ctx){
   if(s.pts.length<2)return;
-  ctx.save();
+  targetCtx.save();
   
   if (s.tool === 'hl') {
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.globalAlpha = 0.25; 
-    ctx.strokeStyle = s.col;
-    ctx.lineCap = 'round'; 
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = s.size * scale; 
-    ctx.beginPath(); 
+    targetCtx.globalCompositeOperation = 'multiply';
+    targetCtx.globalAlpha = 0.25; 
+    targetCtx.strokeStyle = s.col;
+    targetCtx.lineCap = 'round'; 
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineWidth = s.size * scale; 
+    targetCtx.beginPath(); 
     const p0 = toScreen(s.pts[0].x, s.pts[0].y);
-    ctx.moveTo(p0.x, p0.y); 
+    targetCtx.moveTo(p0.x, p0.y); 
     for(let i=1; i<s.pts.length; i++){
       const p = toScreen(s.pts[i].x, s.pts[i].y);
-      ctx.lineTo(p.x, p.y); 
+      targetCtx.lineTo(p.x, p.y); 
     }
-    ctx.stroke();
+    targetCtx.stroke();
   } else {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1.0;
-    ctx.strokeStyle = s.col;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    targetCtx.globalCompositeOperation = 'source-over';
+    targetCtx.globalAlpha = 1.0;
+    targetCtx.strokeStyle = s.col;
+    targetCtx.lineCap = 'round';
+    targetCtx.lineJoin = 'round';
     for(let i=1; i<s.pts.length; i++){
       const prev=s.pts[i-1],curr=s.pts[i];
       const avgP=((prev.p||.5)+(curr.p||.5))/2;
       const w=s.size*(0.4+avgP*1.6)*scale;
-      ctx.lineWidth=Math.max(1.5,w);
+      targetCtx.lineWidth=Math.max(1.5,w);
       const a=toScreen(prev.x,prev.y),b=toScreen(curr.x,curr.y);
-      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      targetCtx.beginPath();targetCtx.moveTo(a.x,a.y);targetCtx.lineTo(b.x,b.y);targetCtx.stroke();
     }
   }
-  ctx.restore();
-}
-
-function drawIncrementalStroke(s) {
-  if (s.pts.length < 2) return;
-  const prev = s.pts[s.pts.length - 2];
-  const curr = s.pts[s.pts.length - 1];
-
-  ctx.save();
-  if (s.tool === 'hl') {
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.globalAlpha = 0.25; 
-    ctx.strokeStyle = s.col;
-    ctx.lineCap = 'round'; 
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = s.size * scale; 
-    ctx.beginPath(); 
-    const a = toScreen(prev.x, prev.y);
-    const b = toScreen(curr.x, curr.y);
-    ctx.moveTo(a.x, a.y); 
-    ctx.lineTo(b.x, b.y); 
-    ctx.stroke();
-  } else {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1.0;
-    ctx.strokeStyle = s.col;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    const avgP = ((prev.p||.5)+(curr.p||.5))/2;
-    const w = s.size*(0.4+avgP*1.6)*scale;
-    ctx.lineWidth = Math.max(1.5,w);
-    const a = toScreen(prev.x, prev.y);
-    const b = toScreen(curr.x, curr.y);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-  }
-  ctx.restore();
+  targetCtx.restore();
 }
 
 function eraseStrokeAt(vx, vy) {
@@ -1291,6 +1264,12 @@ function onPointerDown(e){
     if(n===1){panning=true;panStart={x:e.clientX,y:e.clientY};panOffStart={x:offsetX,y:offsetY}}
     else if(n===2){
       drawing=false;panning=false;curStroke=null;
+      if(activeCtx){
+          activeCtx.save();
+          activeCtx.setTransform(1,0,0,1,0,0);
+          activeCtx.clearRect(0,0,activeCanvas.width,activeCanvas.height);
+          activeCtx.restore();
+      }
       const pts=Object.values(activePointers);
       lastTouchDist=Math.hypot(pts[1].x-pts[0].x,pts[1].y-pts[0].y);
       lastTouchMid={x:(pts[0].x+pts[1].x)/2-rect.left,y:(pts[0].y+pts[1].y)/2-rect.top};render();
@@ -1328,7 +1307,11 @@ function onPointerMove(e){
     } else if(drawing&&curStroke){
       const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
       curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});
-      drawIncrementalStroke(curStroke);
+      activeCtx.save();
+      activeCtx.setTransform(1,0,0,1,0,0);
+      activeCtx.clearRect(0,0,activeCanvas.width,activeCanvas.height);
+      activeCtx.restore();
+      drawStroke(curStroke, activeCtx);
     }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
@@ -1340,6 +1323,12 @@ function onPointerUp(e){
   if(n<2){lastTouchDist=null;lastTouchMid=null}
   if(drawing){
     drawing=false;
+    if(activeCtx){
+        activeCtx.save();
+        activeCtx.setTransform(1,0,0,1,0,0);
+        activeCtx.clearRect(0,0,activeCanvas.width,activeCanvas.height);
+        activeCtx.restore();
+    }
     if(currentTool==='eraser'){
       if(erasedInCurrentStroke){
         undoStacks[curPage].push(snapshotPage());
