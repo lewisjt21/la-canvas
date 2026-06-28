@@ -285,7 +285,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .sec-drop-menu.open{display:block}
 .sec-drop-item{padding:8px 12px;font-size:12px;font-weight:500;color:white;
   cursor:pointer;border-radius:5px;transition:background .12s;white-space:nowrap}
-.sec-drop-item:hover{background:rgba(255,255,255,.12)}
+.sec-item:hover,.sec-drop-item:hover{background:rgba(255,255,255,.12)}
 
 </style>
 </head>
@@ -482,6 +482,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <div id="camera-list-options" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto"></div>
     <button onclick="closeCameraPicker()" style="background:transparent;color:rgba(255,255,255,.4);border:none;font-size:11px;cursor:pointer;margin-top:4px;font-family:'Inter',sans-serif">Cancel</button>
   </div>
+</div>
+
+<div id="pdf-overlay">
+  <div id="pdf-spinner"></div>
+  <div id="pdf-status" style="margin-top: 10px; font-weight: normal; font-size: 12px; opacity: 0.8;">Preparing PDF...</div>
 </div>
 
 <div id="toast"></div>
@@ -1179,6 +1184,44 @@ function drawStroke(s){
   ctx.restore();
 }
 
+function drawIncrementalStroke(s) {
+  if (s.pts.length < 2) return;
+  const prev = s.pts[s.pts.length - 2];
+  const curr = s.pts[s.pts.length - 1];
+
+  ctx.save();
+  if (s.tool === 'hl') {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.25; 
+    ctx.strokeStyle = s.col;
+    ctx.lineCap = 'round'; 
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = s.size * scale; 
+    ctx.beginPath(); 
+    const a = toScreen(prev.x, prev.y);
+    const b = toScreen(curr.x, curr.y);
+    ctx.moveTo(a.x, a.y); 
+    ctx.lineTo(b.x, b.y); 
+    ctx.stroke();
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+    ctx.strokeStyle = s.col;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const avgP = ((prev.p||.5)+(curr.p||.5))/2;
+    const w = s.size*(0.4+avgP*1.6)*scale;
+    ctx.lineWidth = Math.max(1.5,w);
+    const a = toScreen(prev.x, prev.y);
+    const b = toScreen(curr.x, curr.y);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function eraseStrokeAt(vx, vy) {
   const HIT = 15 / scale;
   const arr = strokes();
@@ -1284,7 +1327,7 @@ function onPointerMove(e){
     } else if(drawing&&curStroke){
       const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
       curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});
-      render();
+      drawIncrementalStroke(curStroke);
     }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
@@ -1519,13 +1562,17 @@ async function exportPDF(){
       
       pdf.setDrawColor(s.col);
       if(s.tool === 'hl') {
-        pdf.setLineCap('round');
         pdf.setLineWidth(s.size);
+        if (pdf.GState) {
+          pdf.setGState(new pdf.GState({opacity: 0.25}));
+        }
         for(let i=1; i<s.pts.length; i++){
           pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
         }
+        if (pdf.GState) {
+          pdf.setGState(new pdf.GState({opacity: 1.0}));
+        }
       } else {
-        pdf.setLineCap('round');
         for(let i=1; i<s.pts.length; i++){
           const prev = s.pts[i-1], curr = s.pts[i];
           const avgP = ((prev.p||0.5) + (curr.p||0.5)) / 2;
