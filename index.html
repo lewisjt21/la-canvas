@@ -91,11 +91,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 /* Move sheet */
 #move-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(22,42,78,.75);
-  align-items:center;justify-content:center}
+  align-items:flex-end;justify-content:center}
 #move-sheet.active{display:flex}
-#move-box{background:var(--navydim);border-radius:14px;width:min(90vw,400px);
-  max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5);
-  border:1px solid rgba(255,255,255,.12)}
+#move-box{background:var(--navydim);border-radius:16px 16px 0 0;width:100%;max-width:480px;
+  max-height:70vh;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);
+  border-top:1px solid rgba(255,255,255,.12)}
 #move-box-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
   border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
 #move-box-head h3{font-size:14px;font-weight:700;color:white}
@@ -366,8 +366,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 <input type="file" id="img-input" accept="image/*">
 
-<div id="pen-ui-wrap" style="display:none; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px;">
-  <div id="pen-pill" title="Current Tool" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:pointer; transition:background .15s">
+<div id="pen-ui-wrap" style="display:flex; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px;">
+  <div id="pen-pill" title="Current Tool" onclick="togglePalette()" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:pointer; transition:background .15s">
     <svg id="pill-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
   </div>
   <div id="pen-bar" class="hidden">
@@ -1221,6 +1221,44 @@ function drawStroke(s, targetCtx = ctx){
   targetCtx.restore();
 }
 
+function drawIncrementalStroke(s) {
+  if (s.pts.length < 2) return;
+  const prev = s.pts[s.pts.length - 2];
+  const curr = s.pts[s.pts.length - 1];
+
+  ctx.save();
+  if (s.tool === 'hl') {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.25; 
+    ctx.strokeStyle = s.col;
+    ctx.lineCap = 'round'; 
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = s.size * scale; 
+    ctx.beginPath(); 
+    const a = toScreen(prev.x, prev.y);
+    const b = toScreen(curr.x, curr.y);
+    ctx.moveTo(a.x, a.y); 
+    ctx.lineTo(b.x, b.y); 
+    ctx.stroke();
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+    ctx.strokeStyle = s.col;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const avgP = ((prev.p||.5)+(curr.p||.5))/2;
+    const w = s.size*(0.4+avgP*1.6)*scale;
+    ctx.lineWidth = Math.max(1.5,w);
+    const a = toScreen(prev.x, prev.y);
+    const b = toScreen(curr.x, curr.y);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function eraseStrokeAt(vx, vy) {
   const HIT = 15 / scale;
   const arr = strokes();
@@ -1686,32 +1724,6 @@ document.getElementById('pen-bar').addEventListener('click', e => {
 document.getElementById('hl-slider').addEventListener('input', e => {
   hlSz = parseInt(e.target.value);
   if (currentTool === 'hl') penSz = hlSz;
-});
-
-const penWrap = document.getElementById('pen-ui-wrap');
-let isUIDrag = false, uiDragged = false, uiDragSX, uiDragSY, uiStartL, uiStartT;
-penWrap.addEventListener('pointerdown', e => {
-  if(e.target.closest('#pen-bar')) return;
-  isUIDrag = true; uiDragged = false; uiDragSX = e.clientX; uiDragSY = e.clientY;
-  const r = penWrap.getBoundingClientRect(); uiStartL = r.left; uiStartT = r.top;
-  penWrap.setPointerCapture(e.pointerId);
-});
-penWrap.addEventListener('pointermove', e => {
-  if(!isUIDrag) return;
-  const dx = e.clientX - uiDragSX, dy = e.clientY - uiDragSY;
-  if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-    uiDragged = true;
-    penWrap.style.left = (uiStartL + dx) + 'px';
-    penWrap.style.top = (uiStartT + dy) + 'px';
-    penWrap.style.bottom = 'auto';
-    penWrap.style.right = 'auto';
-  }
-});
-penWrap.addEventListener('pointerup', e => {
-  if(!isUIDrag) return;
-  isUIDrag = false;
-  penWrap.releasePointerCapture(e.pointerId);
-  if(!uiDragged) togglePalette();
 });
 
 /* -- DOCUMENT CAMERA DEVICE ENUMERATION CONTROLLER -- */
