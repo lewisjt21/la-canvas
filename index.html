@@ -228,7 +228,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
   background:var(--navy);color:white;font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;
-  box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
+  box-shadow:0 4px 166px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #img-input{display:none}
 
@@ -365,7 +365,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 <input type="file" id="img-input" accept="image/*">
 
 <div id="pen-ui-wrap" style="display:none; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px;">
-  <div id="pen-pill" title="Current Tool" onclick="togglePalette()" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:pointer; transition:background .15s">
+  <div id="pen-pill" title="Current Tool" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:pointer; transition:background .15s">
     <svg id="pill-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
   </div>
   <div id="pen-bar" class="hidden">
@@ -1092,17 +1092,18 @@ let snapOn=false,_paletteOn=false;
 let erasedInCurrentStroke = false;
 const DOT_SPACING=22,DOT_RADIUS=1.2;
 
-let dotPatternCanvas = null;
-function getDotPattern() {
-  if (!dotPatternCanvas) {
-    dotPatternCanvas = document.createElement('canvas');
-    dotPatternCanvas.width = DOT_SPACING;
-    dotPatternCanvas.height = DOT_SPACING;
-    const pCtx = dotPatternCanvas.getContext('2d');
+let dotPatternObj = null;
+function getDotPattern(context) {
+  if (!dotPatternObj) {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = DOT_SPACING;
+    tempCanvas.height = DOT_SPACING;
+    const pCtx = tempCanvas.getContext('2d');
     pCtx.fillStyle = 'rgba(31,56,100,0.13)';
     pCtx.fillRect(0, 0, DOT_RADIUS * 2, DOT_RADIUS * 2);
+    dotPatternObj = context.createPattern(tempCanvas, 'repeat');
   }
-  return dotPatternCanvas;
+  return dotPatternObj;
 }
 
 function toVirt(sx,sy){return{x:(sx-offsetX)/scale,y:(sy-offsetY)/scale}}
@@ -1132,7 +1133,7 @@ function render(){
 
 function drawDots(W,H){
   if(scale < 0.35) return; 
-  const pattern = ctx.createPattern(getDotPattern(), 'repeat');
+  const pattern = getDotPattern(ctx);
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
@@ -1520,12 +1521,9 @@ async function exportPDF(){
       if(s.tool === 'hl') {
         pdf.setLineCap('round');
         pdf.setLineWidth(s.size);
-        pdf.beginPath();
-        pdf.moveTo(s.pts[0].x - oX, s.pts[0].y - oY);
         for(let i=1; i<s.pts.length; i++){
-          pdf.lineTo(s.pts[i].x - oX, s.pts[i].y - oY);
+          pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
         }
-        pdf.stroke();
       } else {
         pdf.setLineCap('round');
         for(let i=1; i<s.pts.length; i++){
@@ -1624,6 +1622,32 @@ document.getElementById('pen-bar').addEventListener('click', e => {
 document.getElementById('hl-slider').addEventListener('input', e => {
   hlSz = parseInt(e.target.value);
   if (currentTool === 'hl') penSz = hlSz;
+});
+
+const penWrap = document.getElementById('pen-ui-wrap');
+let isUIDrag = false, uiDragged = false, uiDragSX, uiDragSY, uiStartL, uiStartT;
+penWrap.addEventListener('pointerdown', e => {
+  if(e.target.closest('#pen-bar')) return;
+  isUIDrag = true; uiDragged = false; uiDragSX = e.clientX; uiDragSY = e.clientY;
+  const r = penWrap.getBoundingClientRect(); uiStartL = r.left; uiStartT = r.top;
+  penWrap.setPointerCapture(e.pointerId);
+});
+penWrap.addEventListener('pointermove', e => {
+  if(!isUIDrag) return;
+  const dx = e.clientX - uiDragSX, dy = e.clientY - uiDragSY;
+  if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+    uiDragged = true;
+    penWrap.style.left = (uiStartL + dx) + 'px';
+    penWrap.style.top = (uiStartT + dy) + 'px';
+    penWrap.style.bottom = 'auto';
+    penWrap.style.right = 'auto';
+  }
+});
+penWrap.addEventListener('pointerup', e => {
+  if(!isUIDrag) return;
+  isUIDrag = false;
+  penWrap.releasePointerCapture(e.pointerId);
+  if(!uiDragged) togglePalette();
 });
 
 /* -- DOCUMENT CAMERA DEVICE ENUMERATION CONTROLLER -- */
