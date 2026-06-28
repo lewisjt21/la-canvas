@@ -208,7 +208,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #undo-fab:disabled,#redo-fab:disabled{opacity:.3;cursor:default}
 #snap-fab.active{background:var(--yellow);color:var(--navy);border-color:var(--yellow)}
 
-#zoom-pill{position:absolute;bottom:16px;right:16px;background:rgba(31,56,100,.8);
+#zoom-pill{position:absolute;top:16px;right:16px;background:rgba(31,56,100,.8);
   border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 10px;
   font-size:10px;font-weight:600;color:rgba(255,255,255,.7);backdrop-filter:blur(4px);
   pointer-events:none;opacity:0;transition:opacity .3s}
@@ -1092,6 +1092,19 @@ let snapOn=false,_paletteOn=false;
 let erasedInCurrentStroke = false;
 const DOT_SPACING=22,DOT_RADIUS=1.2;
 
+let dotPatternCanvas = null;
+function getDotPattern() {
+  if (!dotPatternCanvas) {
+    dotPatternCanvas = document.createElement('canvas');
+    dotPatternCanvas.width = DOT_SPACING;
+    dotPatternCanvas.height = DOT_SPACING;
+    const pCtx = dotPatternCanvas.getContext('2d');
+    pCtx.fillStyle = 'rgba(31,56,100,0.13)';
+    pCtx.fillRect(0, 0, DOT_RADIUS * 2, DOT_RADIUS * 2);
+  }
+  return dotPatternCanvas;
+}
+
 function toVirt(sx,sy){return{x:(sx-offsetX)/scale,y:(sy-offsetY)/scale}}
 function toScreen(vx,vy){return{x:vx*scale+offsetX,y:vy*scale+offsetY}}
 function strokes(){return pageData[curPage].strokes}
@@ -1119,16 +1132,13 @@ function render(){
 
 function drawDots(W,H){
   if(scale < 0.35) return; 
-  const sv=toVirt(0,0),ev=toVirt(W,H);
-  const gx0=Math.floor(sv.x/DOT_SPACING)*DOT_SPACING,gy0=Math.floor(sv.y/DOT_SPACING)*DOT_SPACING;
-  ctx.fillStyle='rgba(31,56,100,0.13)';
-  const dotSz = Math.max(1, (DOT_RADIUS * 2) * scale); 
-  for(let vx=gx0;vx<ev.x+DOT_SPACING;vx+=DOT_SPACING){
-    for(let vy=gy0;vy<ev.y+DOT_SPACING;vy+=DOT_SPACING){
-      const s=toScreen(vx,vy);
-      ctx.fillRect(s.x - dotSz/2, s.y - dotSz/2, dotSz, dotSz);
-    }
-  }
+  const pattern = ctx.createPattern(getDotPattern(), 'repeat');
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = pattern;
+  ctx.fillRect(-offsetX / scale, -offsetY / scale, W / scale, H / scale);
+  ctx.restore();
 }
 
 function drawStroke(s){
