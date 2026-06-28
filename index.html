@@ -566,7 +566,7 @@ function dbGetByIndex(store,index,val){
       q.onsuccess=()=>r(q.result.filter(rec=>rec[index]===null||rec[index]===undefined));
       q.onerror=()=>j(q.error);
     } else {
-      const q=stx(readonly).index(index).getAll(val);
+      const q=stx(store,'readonly').index(index).getAll(val);
       q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);
     }
   });
@@ -1396,13 +1396,6 @@ function trySnapShape(stroke){
   if(endDist/sL>0.88)return{type:'line',x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
   if(endDist>Math.max(bW,bH)*0.4)return null;
 
-  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
-  if(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
-
-  const n=simple.length;
-  if(n===3)return{type:'triangle',pts:simple};
-  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
-
   let area=0;
   for(let i=0,j=pts.length-1;i<pts.length;j=i++)area+=(pts[j].x+pts[i].x)*(pts[j].y-pts[i].y);
   const fillRatio=Math.abs(area/2)/(bW*bH);
@@ -1418,6 +1411,13 @@ function trySnapShape(stroke){
   radialError/=pts.length;
 
   if(radialError<0.12 && fillRatio>0.70)return{type:'circle',cx,cy,r:Math.max(bW,bH)/2};
+
+  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
+  if(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
+
+  const n=simple.length;
+  if(n===3)return{type:'triangle',pts:simple};
+  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
 
   const heavyEps=Math.max(bW,bH)*0.15,heavySimple=rdp(pts,heavyEps);
   if(heavySimple.length>1&&Math.hypot(heavySimple[heavySimple.length-1].x-heavySimple[0].x,heavySimple[heavySimple.length-1].y-heavySimple[0].y)<heavyEps*2)heavySimple.pop();
@@ -1603,15 +1603,24 @@ async function exportPDF(){
       oY = mnY - pad;
     }
 
-    const orientation = bW > bH ? 'landscape' : 'portrait';
+    const MAX_DIM = 14000;
+    let pdfScale = 1;
+    if (bW > MAX_DIM || bH > MAX_DIM) {
+        pdfScale = MAX_DIM / Math.max(bW, bH);
+    }
+
+    const pdfW = bW * pdfScale;
+    const pdfH = bH * pdfScale;
+
+    const orientation = pdfW > pdfH ? 'landscape' : 'portrait';
     if(!pdf){
-      pdf = new jsPDF({ orientation, unit: 'px', format: [bW, bH] });
+      pdf = new jsPDF({ orientation, unit: 'px', format: [pdfW, pdfH] });
     } else {
-      pdf.addPage([bW, bH], orientation);
+      pdf.addPage([pdfW, pdfH], orientation);
     }
 
     pdf.setFillColor(bgColour);
-    pdf.rect(0, 0, bW, bH, 'F');
+    pdf.rect(0, 0, pdfW, pdfH, 'F');
 
     pdf.setFillColor('#d1d8e6'); 
     const ds = DOT_SPACING;
@@ -1619,9 +1628,10 @@ async function exportPDF(){
     const gy0 = Math.floor(oY/ds)*ds;
     for(let x=gx0; x<oX+bW+ds; x+=ds){
       for(let y=gy0; y<oY+bH+ds; y+=ds){
-        const px = x - oX, py = y - oY;
-        if(px>=0 && px<=bW && py>=0 && py<=bH){
-          pdf.circle(px, py, DOT_RADIUS, 'F');
+        const px = (x - oX) * pdfScale;
+        const py = (y - oY) * pdfScale;
+        if(px>=0 && px<=pdfW && py>=0 && py<=pdfH){
+          pdf.circle(px, py, DOT_RADIUS * pdfScale, 'F');
         }
       }
     }
@@ -1630,7 +1640,7 @@ async function exportPDF(){
       if(!img._el) continue;
       try {
         const format = img.src.includes('image/png') ? 'PNG' : 'JPEG';
-        pdf.addImage(img.src, format, img.x - oX, img.y - oY, img.w, img.h);
+        pdf.addImage(img.src, format, (img.x - oX) * pdfScale, (img.y - oY) * pdfScale, img.w * pdfScale, img.h * pdfScale);
       } catch(e) { console.error('Image embed error', e); }
     }
 
@@ -1641,7 +1651,7 @@ async function exportPDF(){
       
       pdf.setDrawColor(s.col);
       if(s.tool === 'hl') {
-        pdf.setLineWidth(s.size);
+        pdf.setLineWidth(s.size * pdfScale);
         if (GState) {
           pdf.setGState(new GState({opacity: 0.25, 'stroke-opacity': 0.25, blendMode: 'Multiply'}));
         } else if (pdf.GState) { 
@@ -1650,9 +1660,9 @@ async function exportPDF(){
         
         const lines = [];
         for(let i=1; i<s.pts.length; i++){
-          lines.push([s.pts[i].x - s.pts[i-1].x, s.pts[i].y - s.pts[i-1].y]);
+          lines.push([(s.pts[i].x - s.pts[i-1].x) * pdfScale, (s.pts[i].y - s.pts[i-1].y) * pdfScale]);
         }
-        pdf.lines(lines, s.pts[0].x - oX, s.pts[0].y - oY, [1, 1], 'S');
+        pdf.lines(lines, (s.pts[0].x - oX) * pdfScale, (s.pts[0].y - oY) * pdfScale, [1, 1], 'S');
         
         if (GState) {
           pdf.setGState(new GState({opacity: 1.0, 'stroke-opacity': 1.0, blendMode: 'Normal'}));
@@ -1663,8 +1673,8 @@ async function exportPDF(){
         for(let i=1; i<s.pts.length; i++){
           const prev = s.pts[i-1], curr = s.pts[i];
           const avgP = ((prev.p||0.5) + (curr.p||0.5)) / 2;
-          pdf.setLineWidth(Math.max(0.5, s.size * (0.4 + avgP * 1.6)));
-          pdf.line(prev.x - oX, prev.y - oY, curr.x - oX, curr.y - oY);
+          pdf.setLineWidth(Math.max(0.5, s.size * (0.4 + avgP * 1.6)) * pdfScale);
+          pdf.line((prev.x - oX) * pdfScale, (prev.y - oY) * pdfScale, (curr.x - oX) * pdfScale, (curr.y - oY) * pdfScale);
         }
       }
     }
