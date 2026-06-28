@@ -228,7 +228,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
   background:var(--navy);color:white;font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;
-  box-shadow:0 4px 166px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
+  box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:all .25s;pointer-events:none;z-index:500;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #img-input{display:none}
 
@@ -285,7 +285,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .sec-drop-menu.open{display:block}
 .sec-drop-item{padding:8px 12px;font-size:12px;font-weight:500;color:white;
   cursor:pointer;border-radius:5px;transition:background .12s;white-space:nowrap}
-.sec-item:hover,.sec-drop-item:hover{background:rgba(255,255,255,.12)}
+.sec-drop-item:hover{background:rgba(255,255,255,.12)}
 
 </style>
 </head>
@@ -1493,7 +1493,7 @@ async function exportPDF(){
   const overlay=document.getElementById('pdf-overlay'),statusEl=document.getElementById('pdf-status');
   overlay.classList.add('active');statusEl.textContent='Loading libraries...';
   if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  const{jsPDF}=window.jspdf;
+  const{jsPDF, GState}=window.jspdf;
 
   let pdf = null;
   const pad = 40; 
@@ -1563,14 +1563,18 @@ async function exportPDF(){
       pdf.setDrawColor(s.col);
       if(s.tool === 'hl') {
         pdf.setLineWidth(s.size);
-        if (pdf.GState) {
-          pdf.setGState(new pdf.GState({opacity: 0.25}));
+        if (GState) {
+          pdf.setGState(new GState({opacity: 0.25}));
         }
+        
+        const lines = [];
         for(let i=1; i<s.pts.length; i++){
-          pdf.line(s.pts[i-1].x - oX, s.pts[i-1].y - oY, s.pts[i].x - oX, s.pts[i].y - oY);
+          lines.push([s.pts[i].x - s.pts[i-1].x, s.pts[i].y - s.pts[i-1].y]);
         }
-        if (pdf.GState) {
-          pdf.setGState(new pdf.GState({opacity: 1.0}));
+        pdf.lines(lines, s.pts[0].x - oX, s.pts[0].y - oY, [1, 1], 'S');
+        
+        if (GState) {
+          pdf.setGState(new GState({opacity: 1.0}));
         }
       } else {
         for(let i=1; i<s.pts.length; i++){
