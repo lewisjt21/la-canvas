@@ -566,7 +566,7 @@ function dbGetByIndex(store,index,val){
       q.onsuccess=()=>r(q.result.filter(rec=>rec[index]===null||rec[index]===undefined));
       q.onerror=()=>j(q.error);
     } else {
-      const q=stx(store,'readonly').index(index).getAll(val);
+      const q=stx(readonly).index(index).getAll(val);
       q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error);
     }
   });
@@ -1394,11 +1394,20 @@ function trySnapShape(stroke){
   const sL=pathLength(pts),endDist=Math.hypot(pts[pts.length-1].x-pts[0].x,pts[pts.length-1].y-pts[0].y);
 
   if(endDist/sL>0.88)return{type:'line',x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
-  if(endDist>Math.max(bW,bH)*0.35)return null;
+  if(endDist>Math.max(bW,bH)*0.4)return null;
+
+  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
+  if(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
+
+  const n=simple.length;
+  if(n===3)return{type:'triangle',pts:simple};
+  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
 
   let area=0;
   for(let i=0,j=pts.length-1;i<pts.length;j=i++)area+=(pts[j].x+pts[i].x)*(pts[j].y-pts[i].y);
   const fillRatio=Math.abs(area/2)/(bW*bH);
+
+  if(fillRatio>0.84)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
 
   const a=bW/2,b=bH/2,cx=mnX+a,cy=mnY+b;
   let radialError=0;
@@ -1408,28 +1417,14 @@ function trySnapShape(stroke){
   }
   radialError/=pts.length;
 
-  const h=Math.pow(a-b,2)/Math.pow(a+b,2);
-  const ep=Math.PI*(a+b)*(1+(3*h)/(10+Math.sqrt(4-3*h)));
+  if(radialError<0.12 && fillRatio>0.70)return{type:'circle',cx,cy,r:Math.max(bW,bH)/2};
 
-  if(radialError<0.22 && Math.abs(sL-ep)/ep<0.25 && fillRatio<0.82){
-    return{type:'circle',cx,cy,r:Math.max(bW,bH)/2};
-  }
+  const heavyEps=Math.max(bW,bH)*0.15,heavySimple=rdp(pts,heavyEps);
+  if(heavySimple.length>1&&Math.hypot(heavySimple[heavySimple.length-1].x-heavySimple[0].x,heavySimple[heavySimple.length-1].y-heavySimple[0].y)<heavyEps*2)heavySimple.pop();
+  
+  if(heavySimple.length===3)return{type:'triangle',pts:heavySimple};
+  if(heavySimple.length===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
 
-  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
-  if(Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
-
-  const n=simple.length;
-  if(n===3)return{type:'triangle',pts:simple};
-  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
-
-  if(n>4){
-    if(fillRatio>0.75)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
-    if(fillRatio<0.65){
-      const strictSimple=rdp(pts,Math.max(bW,bH)*0.15);
-      if(Math.hypot(strictSimple[strictSimple.length-1].x-strictSimple[0].x,strictSimple[strictSimple.length-1].y-strictSimple[0].y)<Math.max(bW,bH)*0.3)strictSimple.pop();
-      if(strictSimple.length===3)return{type:'triangle',pts:strictSimple};
-    }
-  }
   return null;
 }
 
