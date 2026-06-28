@@ -477,6 +477,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
+<!-- Camera Hardware Selection Picker Sheet -->
 <div id="camera-picker-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
   <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:min(90vw,360px);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-height:80vh">
     <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;text-align:center">Select Camera Source</h3>
@@ -1396,6 +1397,13 @@ function trySnapShape(stroke){
   if(endDist/sL>0.88)return{type:'line',x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
   if(endDist>Math.max(bW,bH)*0.4)return null;
 
+  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
+  if(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
+
+  const n=simple.length;
+  if(n===3)return{type:'triangle',pts:simple};
+  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
+
   let area=0;
   for(let i=0,j=pts.length-1;i<pts.length;j=i++)area+=(pts[j].x+pts[i].x)*(pts[j].y-pts[i].y);
   const fillRatio=Math.abs(area/2)/(bW*bH);
@@ -1411,13 +1419,6 @@ function trySnapShape(stroke){
   radialError/=pts.length;
 
   if(radialError<0.12 && fillRatio>0.70)return{type:'circle',cx,cy,r:Math.max(bW,bH)/2};
-
-  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
-  if(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
-
-  const n=simple.length;
-  if(n===3)return{type:'triangle',pts:simple};
-  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
 
   const heavyEps=Math.max(bW,bH)*0.15,heavySimple=rdp(pts,heavyEps);
   if(heavySimple.length>1&&Math.hypot(heavySimple[heavySimple.length-1].x-heavySimple[0].x,heavySimple[heavySimple.length-1].y-heavySimple[0].y)<heavyEps*2)heavySimple.pop();
@@ -1603,7 +1604,7 @@ async function exportPDF(){
       oY = mnY - pad;
     }
 
-    const MAX_DIM = 14000;
+    const MAX_DIM = 4000;
     let pdfScale = 1;
     if (bW > MAX_DIM || bH > MAX_DIM) {
         pdfScale = MAX_DIM / Math.max(bW, bH);
