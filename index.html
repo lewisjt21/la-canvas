@@ -91,11 +91,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 /* Move sheet */
 #move-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(22,42,78,.75);
-  align-items:flex-end;justify-content:center}
+  align-items:center;justify-content:center}
 #move-sheet.active{display:flex}
-#move-box{background:var(--navydim);border-radius:16px 16px 0 0;width:100%;max-width:480px;
-  max-height:70vh;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.4);
-  border-top:1px solid rgba(255,255,255,.12)}
+#move-box{background:var(--navydim);border-radius:14px;width:min(90vw,400px);
+  max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,.12)}
 #move-box-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
   border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
 #move-box-head h3{font-size:14px;font-weight:700;color:white}
@@ -366,7 +366,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 <input type="file" id="img-input" accept="image/*">
 
-<div id="pen-ui-wrap" style="display:flex; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px;">
+<div id="pen-ui-wrap" style="display:none; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px;">
   <div id="pen-pill" title="Current Tool" onclick="togglePalette()" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:pointer; transition:background .15s">
     <svg id="pill-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
   </div>
@@ -1380,6 +1380,54 @@ function onPointerMove(e){
   }
 }
 
+function trySnapShape(stroke){
+  const pts=stroke.pts;if(pts.length<10||stroke.erase)return null;
+  let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+  for(const p of pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
+  const bW=mxX-mnX,bH=mxY-mnY;if(bW<15&&bH<15)return null;
+
+  const sL=pathLength(pts),endDist=Math.hypot(pts[pts.length-1].x-pts[0].x,pts[pts.length-1].y-pts[0].y);
+
+  if(endDist/sL>0.88)return{type:'line',x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
+  if(endDist>Math.max(bW,bH)*0.35)return null;
+
+  const a=bW/2,b=bH/2,cx=mnX+a,cy=mnY+b;
+  let radialError=0;
+  for(const p of pts){
+    const nx=a===0?0:(p.x-cx)/a,ny=b===0?0:(p.y-cy)/b;
+    radialError+=Math.abs(Math.hypot(nx,ny)-1);
+  }
+  radialError/=pts.length;
+
+  const h=Math.pow(a-b,2)/Math.pow(a+b,2);
+  const ep=Math.PI*(a+b)*(1+(3*h)/(10+Math.sqrt(4-3*h)));
+
+  if(radialError<0.22 && Math.abs(sL-ep)/ep<0.25){
+    return{type:'circle',cx,cy,r:Math.max(bW,bH)/2};
+  }
+
+  const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
+  if(Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
+
+  const n=simple.length;
+  if(n===3)return{type:'triangle',pts:simple};
+  if(n===4)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
+
+  if(n>4){
+    let area=0;
+    for(let i=0,j=simple.length-1;i<simple.length;j=i++)area+=(simple[j].x+simple[i].x)*(simple[j].y-simple[i].y);
+    const fillRatio=Math.abs(area/2)/(bW*bH);
+
+    if(fillRatio>0.75)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
+    if(fillRatio<0.65){
+      const strictSimple=rdp(pts,Math.max(bW,bH)*0.15);
+      if(Math.hypot(strictSimple[strictSimple.length-1].x-strictSimple[0].x,strictSimple[strictSimple.length-1].y-strictSimple[0].y)<Math.max(bW,bH)*0.3)strictSimple.pop();
+      if(strictSimple.length===3)return{type:'triangle',pts:strictSimple};
+    }
+  }
+  return null;
+}
+
 function onPointerUp(e){
   delete activePointers[e.pointerId];
   const n=Object.keys(activePointers).length;
@@ -1483,27 +1531,11 @@ function applyBgColour(col,save=true){
 }
 
 function toggleSnap(){snapOn=!snapOn;document.getElementById('snap-fab').classList.toggle('active',snapOn);showToast(snapOn?'Shape recognition on':'Shape recognition off')}
-function trySnapShape(stroke){
-  const pts=stroke.pts;if(pts.length<6||stroke.erase)return null;
-  let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
-  for(const p of pts){if(p.x<mnX)mnX=p.x;if(p.y<mnY)mnY=p.y;if(p.x>mxX)mxX=p.x;if(p.y>mxY)mxY=p.y}
-  const bW=mxX-mnX,bH=mxY-mnY;if(bW<12&&bH<12)return null;
-  const sL=pathLength(pts),endDist=Math.hypot(pts[pts.length-1].x-pts[0].x,pts[pts.length-1].y-pts[0].y);
-  if(endDist/sL>0.85)return{type:'line',x1:pts[0].x,y1:pts[0].y,x2:pts[pts.length-1].x,y2:pts[pts.length-1].y};
-  if(endDist>sL*0.3)return null;
-  const eps=Math.max(bW,bH)*0.06,simple=rdp(pts,eps);
-  const eff=(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)?simple.slice(0,-1):simple;
-  const n=eff.length;
-  if(n===3)return{type:'triangle',pts:eff};
-  if(n===4||n===5)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
-  if(n>=6){const ar=bW>0&&bH>0?Math.min(bW,bH)/Math.max(bW,bH):0;const a=bW/2,b=bH/2;const ep=Math.PI*(3*(a+b)-Math.sqrt((3*a+b)*(a+3*b)));if(ar>0.55&&Math.abs(sL-ep)/ep<0.30)return{type:'circle',cx:(mnX+mxX)/2,cy:(mnY+mxY)/2,r:Math.hypot(bW,bH)/2*.88}}
-  return null;
-}
 function pathLength(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);return l}
 function rdp(pts,eps){if(pts.length<3)return pts.slice();const f=pts[0],la=pts[pts.length-1];let mx=0,mi=0;for(let i=1;i<pts.length-1;i++){const d=p2ld(pts[i],f,la);if(d>mx){mx=d;mi=i}}if(mx>eps)return rdp(pts.slice(0,mi+1),eps).slice(0,-1).concat(rdp(pts.slice(mi),eps));return[f,la]}
 function p2ld(p,a,b){const dx=b.x-a.x,dy=b.y-a.y;if(!dx&&!dy)return Math.hypot(p.x-a.x,p.y-a.y);const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy);return Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy))}
 function makeShapeStroke(shape,orig){
-  const base={col:orig.col,size:orig.size,erase:false};
+  const base={col:orig.col,size:orig.size,erase:false,tool:orig.tool||'pen'};
   if(shape.type==='line')base.pts=[{x:shape.x1,y:shape.y1,p:.5},{x:shape.x2,y:shape.y2,p:.5}];
   else if(shape.type==='rect'){const{x,y,w,h}=shape;base.pts=[{x,y,p:.5},{x:x+w,y,p:.5},{x:x+w,y:y+h,p:.5},{x,y:y+h,p:.5},{x,y,p:.5}]}
   else if(shape.type==='circle'){const{cx,cy,r}=shape;const cp=[];for(let a=0;a<=Math.PI*2+.01;a+=Math.PI/36)cp.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,p:.5});base.pts=cp}
