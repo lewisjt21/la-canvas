@@ -1397,6 +1397,7 @@ function onPointerDown(e){
   if(isPenOrMouse(e)&&n===1){
     drawing=true;const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
     curStroke={col:currentTool==='hl'?hlCol:penCol,size:penSz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
+    renderActive();
   } else if(!isPenOrMouse(e)){
     if(n===1){panning=true;panStart={x:e.clientX,y:e.clientY};panOffStart={x:offsetX,y:offsetY}}
     else if(n===2){
@@ -1442,16 +1443,7 @@ function onPointerMove(e){
     } else if(drawing&&curStroke){
       const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
       curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});
-      
-      if(currentTool === 'hl' || currentTool === 'laser'){
-         activeCtx.save();
-         activeCtx.setTransform(1,0,0,1,0,0);
-         activeCtx.clearRect(0,0,activeCanvas.width,activeCanvas.height);
-         activeCtx.restore();
-         drawStroke(curStroke, activeCtx);
-      } else {
-         drawIncrementalStroke(curStroke);
-      }
+      renderActive();
     }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
