@@ -403,16 +403,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 </div>
 
 <div id="ur-wrap" style="display:none; bottom:16px; right:16px; position:fixed; z-index:90; flex-direction:column; gap:8px;">
-  <button id="snap-fab" onpointerdown="event.preventDefault(); toggleSnap()" title="Shape recognition">
+  <button id="snap-fab" onclick="toggleSnap()" title="Shape recognition">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 20 2 20"/></svg>
   </button>
-  <button id="undo-fab" onpointerdown="event.preventDefault(); undo()" title="Undo">
+  <button id="undo-fab" onclick="undo()" title="Undo">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
   </button>
-  <button id="redo-fab" onpointerdown="event.preventDefault(); redo()" title="Redo">
+  <button id="redo-fab" onclick="redo()" title="Redo">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
   </button>
-  <button id="clear-fab" onpointerdown="event.preventDefault(); clearPage()" title="Clear Page" style="width:40px; height:40px; border-radius:50%; background:#c0392b; border:1.5px solid #a93226; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.35);">
+  <button id="clear-fab" onclick="clearPage()" title="Clear Page" style="width:40px; height:40px; border-radius:50%; background:#c0392b; border:1.5px solid #a93226; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.35);">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
 </div>
@@ -1575,7 +1575,7 @@ function undo(){
       pageData[curPage].strokes = act.strokes;
       pageData[curPage].images = act.images;
   }
-  requestAnimationFrame(render); syncUndoRedo(); scheduleAutoSave();
+  render(); syncUndoRedo(); scheduleAutoSave();
 }
 
 function redo(){
@@ -1593,14 +1593,14 @@ function redo(){
       pageData[curPage].strokes = [];
       pageData[curPage].images = [];
   }
-  requestAnimationFrame(render); syncUndoRedo(); scheduleAutoSave();
+  render(); syncUndoRedo(); scheduleAutoSave();
 }
 
 function clearPage(){
   if(!strokes().length&&!images().length){showToast('Page already empty');return}
   pushAction({type: 'clear', strokes: [...strokes()], images: [...images()]});
   pageData[curPage]={strokes:[],images:[]};
-  requestAnimationFrame(render); syncUndoRedo(); scheduleAutoSave();
+  render(); syncUndoRedo(); scheduleAutoSave();
 }
 
 /* -- DATA SYSTEMS & EXPORT -- */
