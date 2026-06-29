@@ -480,7 +480,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
   </div>
 </div>
 
-<!-- Camera Hardware Selection Picker Sheet -->
 <div id="camera-picker-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(22,42,78,.88);align-items:center;justify-content:center">
   <div style="background:var(--navydim);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;width:min(90vw,360px);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);max-height:80vh">
     <h3 style="color:white;font-size:15px;margin:0;font-weight:700;font-family:'Inter',sans-serif;text-align:center">Select Camera Source</h3>
@@ -1235,13 +1234,26 @@ function drawStroke(s, targetCtx = ctx, overrideAlpha = null){
       targetCtx.lineTo(p.x, p.y); 
     }
     targetCtx.stroke();
+  } else if (s.tool === 'laser') {
+    targetCtx.globalCompositeOperation = 'source-over';
+    targetCtx.globalAlpha = overrideAlpha !== null ? overrideAlpha : 1.0;
+    targetCtx.shadowColor = s.col;
+    targetCtx.shadowBlur = 12 * scale;
+    targetCtx.strokeStyle = s.col;
+    targetCtx.lineCap = 'round';
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineWidth = s.size * scale;
+    targetCtx.beginPath();
+    const p0 = toScreen(s.pts[0].x, s.pts[0].y);
+    targetCtx.moveTo(p0.x, p0.y);
+    for(let i=1; i<s.pts.length; i++){
+        const p = toScreen(s.pts[i].x, s.pts[i].y);
+        targetCtx.lineTo(p.x, p.y);
+    }
+    targetCtx.stroke();
   } else {
     targetCtx.globalCompositeOperation = 'source-over';
     targetCtx.globalAlpha = overrideAlpha !== null ? overrideAlpha : 1.0;
-    if (s.tool === 'laser') {
-        targetCtx.shadowColor = s.col;
-        targetCtx.shadowBlur = 12 * scale;
-    }
     targetCtx.strokeStyle = s.col;
     targetCtx.lineCap = 'round';
     targetCtx.lineJoin = 'round';
