@@ -1138,20 +1138,6 @@ let gridMode = 0;
 
 const DOT_SPACING=22,DOT_RADIUS=1.2;
 
-let dotPatternObj = null;
-function getDotPattern(context) {
-  if (!dotPatternObj) {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = DOT_SPACING;
-    tempCanvas.height = DOT_SPACING;
-    const pCtx = tempCanvas.getContext('2d');
-    pCtx.fillStyle = 'rgba(31,56,100,0.13)';
-    pCtx.fillRect(0, 0, DOT_RADIUS * 2, DOT_RADIUS * 2);
-    dotPatternObj = context.createPattern(tempCanvas, 'repeat');
-  }
-  return dotPatternObj;
-}
-
 function toVirt(sx,sy){return{x:(sx-offsetX)/scale,y:(sy-offsetY)/scale}}
 function toScreen(vx,vy){return{x:vx*scale+offsetX,y:vy*scale+offsetY}}
 function strokes(){return pageData[curPage].strokes}
@@ -1196,14 +1182,25 @@ function drawGridSystem(W,H){
   ctx.scale(scale, scale);
   
   if (gridMode === 0) {
-      const pattern = getDotPattern(ctx);
-      ctx.fillStyle = pattern;
-      ctx.fillRect(-offsetX / scale, -offsetY / scale, W / scale, H / scale);
+      ctx.fillStyle = 'rgba(31,56,100,0.15)';
+      ctx.beginPath();
+      const step = DOT_SPACING;
+      const sx = Math.floor((-offsetX/scale)/step)*step;
+      const sy = Math.floor((-offsetY/scale)/step)*step;
+      const ex = sx + W/scale + step;
+      const ey = sy + H/scale + step;
+      for(let x=sx; x<ex; x+=step) {
+          for(let y=sy; y<ey; y+=step) {
+              ctx.moveTo(x + DOT_RADIUS, y);
+              ctx.arc(x, y, DOT_RADIUS, 0, Math.PI*2);
+          }
+      }
+      ctx.fill();
   } else if (gridMode === 1) {
       ctx.strokeStyle = 'rgba(31,56,100,0.1)';
       ctx.lineWidth = 1/scale;
       ctx.beginPath();
-      const step = 22;
+      const step = DOT_SPACING;
       const sx = Math.floor((-offsetX/scale)/step)*step;
       const sy = Math.floor((-offsetY/scale)/step)*step;
       const ex = sx + W/scale + step;
@@ -1396,7 +1393,8 @@ function onPointerDown(e){
 
   if(isPenOrMouse(e)&&n===1){
     drawing=true;const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
-    curStroke={col:currentTool==='hl'?hlCol:penCol,size:penSz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
+    const sz=currentTool==='hl'?hlSz:penSz;
+    curStroke={col:currentTool==='hl'?hlCol:penCol,size:sz,tool:currentTool,pts:[{x:v.x,y:v.y,p:e.pressure||.5}]};
     renderActive();
   } else if(!isPenOrMouse(e)){
     if(n===1){panning=true;panStart={x:e.clientX,y:e.clientY};panOffStart={x:offsetX,y:offsetY}}
@@ -1670,14 +1668,23 @@ function exportSnip(x, y, w, h) {
     tCtx.translate(-x, -y);
 
     if (gridMode === 0) {
-      const pattern = getDotPattern(tCtx);
-      tCtx.fillStyle = pattern;
-      tCtx.fillRect(x, y, w, h);
+      tCtx.fillStyle = 'rgba(31,56,100,0.15)';
+      tCtx.beginPath();
+      const step = DOT_SPACING;
+      const sx = Math.floor(x/step)*step;
+      const sy = Math.floor(y/step)*step;
+      for(let lx=sx; lx<x+w+step; lx+=step) {
+        for(let ly=sy; ly<y+h+step; ly+=step) {
+          tCtx.moveTo(lx + DOT_RADIUS, ly);
+          tCtx.arc(lx, ly, DOT_RADIUS, 0, Math.PI*2);
+        }
+      }
+      tCtx.fill();
     } else if (gridMode === 1) {
       tCtx.strokeStyle = 'rgba(31,56,100,0.1)';
       tCtx.lineWidth = 1;
       tCtx.beginPath();
-      const step = 22;
+      const step = DOT_SPACING;
       const sx = Math.floor(x/step)*step;
       const sy = Math.floor(y/step)*step;
       for(let lx=sx; lx<x+w+step; lx+=step) { tCtx.moveTo(lx, y); tCtx.lineTo(lx, y+h); }
@@ -1935,12 +1942,11 @@ document.getElementById('pen-bar').addEventListener('click', e => {
 });
 
 document.getElementById('pen-slider').addEventListener('input', e => {
-  if (currentTool !== 'hl') penSz = parseInt(e.target.value);
+  penSz = parseInt(e.target.value);
 });
 
 document.getElementById('hl-slider').addEventListener('input', e => {
   hlSz = parseInt(e.target.value);
-  if (currentTool === 'hl') penSz = hlSz;
 });
 
 /* -- DOCUMENT CAMERA DEVICE ENUMERATION CONTROLLER -- */
