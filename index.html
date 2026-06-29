@@ -171,10 +171,11 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 #active-canvas{position:absolute;inset:0;pointer-events:none;touch-action:none}
 
 /* PEN UI */
-#pen-ui-wrap{position:fixed;left:16px;bottom:16px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none}
+#pen-ui-wrap{position:fixed;left:16px;bottom:16px;z-index:90;display:flex;align-items:center;gap:8px;touch-action:none;transition:left .1s, top .1s;}
 #pen-pill{width:44px;height:44px;border-radius:50%;background:var(--navylt);border:1.5px solid rgba(255,255,255,.3);
   display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.4);
-  flex-shrink:0;position:relative;color:white;cursor:pointer;transition:background .15s}
+  flex-shrink:0;position:relative;color:white;cursor:grab;transition:background .15s}
+#pen-pill:active{cursor:grabbing}
 #pen-pill:hover{background:var(--navy)}
 #pen-pill::after{content:'';position:absolute;width:8px;height:8px;border-radius:50%;
   border:1.5px solid white;bottom:2px;right:2px;background:var(--cur-col,#1a1a2e);transition:background .14s;
@@ -368,8 +369,8 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 
 <input type="file" id="img-input" accept="image/*">
 
-<div id="pen-ui-wrap" style="display:flex; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px;">
-  <div id="pen-pill" title="Current Tool" onclick="togglePalette()" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:pointer; transition:background .15s">
+<div id="pen-ui-wrap" style="display:flex; bottom:16px; left:16px; position:fixed; z-index:90; align-items:center; gap:8px; touch-action:none;">
+  <div id="pen-pill" title="Current Tool" style="width:44px; height:44px; border-radius:50%; background:var(--navylt); border:1.5px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 10px rgba(0,0,0,.4); flex-shrink:0; position:relative; color:white; cursor:grab; transition:background .15s">
     <svg id="pill-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
   </div>
   <div id="pen-bar" class="hidden">
@@ -403,16 +404,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 </div>
 
 <div id="ur-wrap" style="display:none; bottom:16px; right:16px; position:fixed; z-index:90; flex-direction:column; gap:8px;">
-  <button id="snap-fab" onclick="toggleSnap()" title="Shape recognition">
+  <button id="snap-fab" onpointerdown="event.preventDefault(); toggleSnap()" title="Shape recognition">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 20 2 20"/></svg>
   </button>
-  <button id="undo-fab" onclick="undo()" title="Undo">
+  <button id="undo-fab" onpointerdown="event.preventDefault(); undo()" title="Undo">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
   </button>
-  <button id="redo-fab" onclick="redo()" title="Redo">
+  <button id="redo-fab" onpointerdown="event.preventDefault(); redo()" title="Redo">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
   </button>
-  <button id="clear-fab" onclick="clearPage()" title="Clear Page" style="width:40px; height:40px; border-radius:50%; background:#c0392b; border:1.5px solid #a93226; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.35);">
+  <button id="clear-fab" onpointerdown="event.preventDefault(); clearPage()" title="Clear Page" style="width:40px; height:40px; border-radius:50%; background:#c0392b; border:1.5px solid #a93226; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.35);">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
 </div>
@@ -980,6 +981,16 @@ async function promptDeleteFolder(){
   document.getElementById('warn-cancel').textContent='Cancel';
 }
 
+/* -- WARN DIALOG -- */
+let warnCallback=null;
+function showWarn(title,msg,cb){
+  warnCallback=cb;
+  document.getElementById('warn-title').textContent=title;
+  document.getElementById('warn-msg').textContent=msg;
+  document.getElementById('warn-ok').onclick=()=>{document.getElementById('warn-dialog').classList.remove('active');if(warnCallback)warnCallback()};
+  document.getElementById('warn-dialog').classList.add('active');
+}
+
 /* -- BOARD OPERATIONS & MEMORY ARCHITECTURE -- */
 let currentBoardId=null,boardCreated=Date.now(),saveTimer=null;
 let bgColour='#f7f9fd';
@@ -1355,7 +1366,46 @@ canvas.addEventListener('pointermove',onPointerMove,{passive:false});
 canvas.addEventListener('pointerup',onPointerUp);
 canvas.addEventListener('pointercancel',onPointerUp);
 
+/* -- PEN UI DRAG MECHANICS -- */
+const penPill = document.getElementById('pen-pill');
+const penWrap = document.getElementById('pen-ui-wrap');
+let pillDrag = false, pillStartX = 0, pillStartY = 0, pillOffX = 0, pillOffY = 0;
+
+penPill.addEventListener('pointerdown', e => {
+    pillDrag = true;
+    pillStartX = e.clientX; 
+    pillStartY = e.clientY;
+    const rect = penWrap.getBoundingClientRect();
+    pillOffX = e.clientX - rect.left; 
+    pillOffY = e.clientY - rect.top;
+    penPill.setPointerCapture(e.pointerId);
+    e.preventDefault();
+});
+
+penPill.addEventListener('pointermove', e => {
+    if(!pillDrag) return;
+    if(Math.hypot(e.clientX - pillStartX, e.clientY - pillStartY) > 5) {
+        const w = window.innerWidth, h = window.innerHeight;
+        let nx = e.clientX - pillOffX;
+        let ny = e.clientY - pillOffY;
+        penWrap.style.left = Math.max(0, Math.min(nx, w - 50)) + 'px';
+        penWrap.style.bottom = 'auto';
+        penWrap.style.top = Math.max(0, Math.min(ny, h - 50)) + 'px';
+    }
+});
+
+penPill.addEventListener('pointerup', e => {
+    if(!pillDrag) return;
+    pillDrag = false;
+    if(Math.hypot(e.clientX - pillStartX, e.clientY - pillStartY) <= 5) {
+        togglePalette();
+    }
+});
+
 function onPointerDown(e){
+  // Prevent canvas draw if interacting with UI
+  if(e.target.closest('#pen-ui-wrap') || e.target.closest('#ur-wrap') || e.target.closest('.tbtn')) return;
+
   e.preventDefault();
   activePointers[e.pointerId]={x:e.clientX,y:e.clientY};
   canvas.setPointerCapture(e.pointerId);
@@ -1399,6 +1449,7 @@ function onPointerDown(e){
 }
 
 function onPointerMove(e){
+  if(e.target.closest('#pen-ui-wrap') || e.target.closest('#ur-wrap') || e.target.closest('.tbtn')) return;
   e.preventDefault();if(!activePointers[e.pointerId])return;
   activePointers[e.pointerId]={x:e.clientX,y:e.clientY};
   const n=Object.keys(activePointers).length,rect=canvas.parentElement.getBoundingClientRect();
@@ -1453,6 +1504,15 @@ function trySnapShape(stroke){
   for(let i=0,j=pts.length-1;i<pts.length;j=i++)area+=(pts[j].x+pts[i].x)*(pts[j].y-pts[i].y);
   const fillRatio=Math.abs(area/2)/(bW*bH);
 
+  const formatRect = (x, y, w, h) => {
+      const mx = Math.max(w, h), mi = Math.min(w, h);
+      if ((mx - mi) / mx <= 0.15) {
+          const side = (w + h) / 2;
+          return {type: 'rect', x: x + w/2 - side/2, y: y + h/2 - side/2, w: side, h: side};
+      }
+      return {type: 'rect', x, y, w, h};
+  };
+
   const eps=Math.max(bW,bH)*0.08,simple=rdp(pts,eps);
   if(simple.length>1&&Math.hypot(simple[simple.length-1].x-simple[0].x,simple[simple.length-1].y-simple[0].y)<eps*2)simple.pop();
 
@@ -1460,9 +1520,10 @@ function trySnapShape(stroke){
   if(n===3)return{type:'triangle',pts:simple};
   
   // Guard rectangle short-circuit with density validation to protect wobbly triangles
-  if(n===4 && fillRatio > 0.78)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
+  // Widen net to 4 or 5 vertices for unclosed squares
+  if((n===4 || n===5) && fillRatio > 0.75) return formatRect(mnX, mnY, bW, bH);
 
-  if(fillRatio>0.84)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
+  if(fillRatio>0.84) return formatRect(mnX, mnY, bW, bH);
 
   const a=bW/2,b=bH/2,cx=mnX+a,cy=mnY+b;
   let radialError=0;
@@ -1479,7 +1540,7 @@ function trySnapShape(stroke){
   if(heavySimple.length>1&&Math.hypot(heavySimple[heavySimple.length-1].x-heavySimple[0].x,heavySimple[heavySimple.length-1].y-heavySimple[0].y)<heavyEps*2)heavySimple.pop();
   
   if(heavySimple.length===3)return{type:'triangle',pts:heavySimple};
-  if(heavySimple.length===4 && fillRatio > 0.78)return{type:'rect',x:mnX,y:mnY,w:bW,h:bH};
+  if((heavySimple.length===4 || heavySimple.length===5) && fillRatio > 0.75) return formatRect(mnX, mnY, bW, bH);
 
   return null;
 }
@@ -1522,13 +1583,6 @@ function onPointerUp(e){
   }
   if(n===0){panning=false;panStart=null}
 }
-
-canvas.addEventListener('wheel',e=>{
-  e.preventDefault();
-  if(Object.keys(activePointers).length > 0) return;
-  const rect=canvas.parentElement.getBoundingClientRect();
-  applyZoom(scale*(e.deltaY<0?1.1:.9),e.clientX-rect.left,e.clientY-rect.top);
-},{passive:false});
 
 /* -- ACTION DELTA UNDO/REDO -- */
 function syncUndoRedo(){
@@ -1643,24 +1697,6 @@ function makeShapeStroke(shape,orig){
   return base;
 }
 
-function addPage(){
-  pageData.push({strokes:[],images:[]});undoHistory.push([]);redoHistory.push([]);
-  curPage=pageData.length-1;buildPageStrip();resetView();showToast('Page '+(curPage+1)+' added');scheduleAutoSave();
-}
-function switchPage(i){if(i===curPage)return;curPage=i;buildPageStrip();resetView();updatePageCounter()}
-let pageDeleteTarget=null;
-function deletePage(i){pageDeleteTarget=i;document.getElementById('page-del-confirm').classList.add('active')}
-function confirmPageDelete(){
-  if(pageDeleteTarget===null)return;
-  if(pageData.length===1){showToast('Cannot delete the only page');document.getElementById('page-del-confirm').classList.remove('active');return}
-  pageData.splice(pageDeleteTarget,1);undoHistory.splice(pageDeleteTarget,1);redoHistory.splice(pageDeleteTarget,1);
-  if(curPage>=pageData.length)curPage=pageData.length-1;
-  document.getElementById('page-del-confirm').classList.remove('active');pageDeleteTarget=null;
-  buildPageStrip();render();showToast('Page deleted');scheduleAutoSave();
-}
-function buildPageStrip(){ /* page strip removed */ }
-function updatePageCounter(){ /* page counter removed */ }
-
 function activateSnip() {
     setTool('snip');
     showToast('Drag to snip & export zone');
@@ -1696,7 +1732,7 @@ function exportSnip(x, y, w, h) {
       tCtx.strokeStyle = 'rgba(31,56,100,0.1)';
       tCtx.lineWidth = 1;
       tCtx.beginPath();
-      const step = DOT_SPACING;
+      const step = 22;
       const sx = Math.floor(x/step)*step;
       const sy = Math.floor(y/step)*step;
       for(let lx=sx; lx<x+w+step; lx+=step) { tCtx.moveTo(lx, y); tCtx.lineTo(lx, y+h); }
