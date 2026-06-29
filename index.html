@@ -403,16 +403,16 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 </div>
 
 <div id="ur-wrap" style="display:none; bottom:16px; right:16px; position:fixed; z-index:90; flex-direction:column; gap:8px;">
-  <button id="snap-fab" onclick="toggleSnap()" title="Shape recognition">
+  <button id="snap-fab" onpointerdown="event.preventDefault(); toggleSnap()" title="Shape recognition">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 20 2 20"/></svg>
   </button>
-  <button id="undo-fab" onclick="undo()" title="Undo">
+  <button id="undo-fab" onpointerdown="event.preventDefault(); undo()" title="Undo">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
   </button>
-  <button id="redo-fab" onclick="redo()" title="Redo">
+  <button id="redo-fab" onpointerdown="event.preventDefault(); redo()" title="Redo">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
   </button>
-  <button id="clear-fab" onclick="clearPage()" title="Clear Page" style="width:40px; height:40px; border-radius:50%; background:#c0392b; border:1.5px solid #a93226; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.35);">
+  <button id="clear-fab" onpointerdown="event.preventDefault(); clearPage()" title="Clear Page" style="width:40px; height:40px; border-radius:50%; background:#c0392b; border:1.5px solid #a93226; color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.35);">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </button>
 </div>
@@ -1442,7 +1442,16 @@ function onPointerMove(e){
     } else if(drawing&&curStroke){
       const v=toVirt(e.clientX-rect.left,e.clientY-rect.top);
       curStroke.pts.push({x:v.x,y:v.y,p:e.pressure||.5});
-      renderActive();
+      
+      if(currentTool === 'hl' || currentTool === 'laser'){
+         activeCtx.save();
+         activeCtx.setTransform(1,0,0,1,0,0);
+         activeCtx.clearRect(0,0,activeCanvas.width,activeCanvas.height);
+         activeCtx.restore();
+         drawStroke(curStroke, activeCtx);
+      } else {
+         drawIncrementalStroke(curStroke);
+      }
     }
     else if(panning&&panStart){offsetX=panOffStart.x+(e.clientX-panStart.x);offsetY=panOffStart.y+(e.clientY-panStart.y);render()}
   }
@@ -1574,7 +1583,7 @@ function undo(){
       pageData[curPage].strokes = act.strokes;
       pageData[curPage].images = act.images;
   }
-  render(); syncUndoRedo(); scheduleAutoSave();
+  requestAnimationFrame(render); syncUndoRedo(); scheduleAutoSave();
 }
 
 function redo(){
@@ -1592,14 +1601,14 @@ function redo(){
       pageData[curPage].strokes = [];
       pageData[curPage].images = [];
   }
-  render(); syncUndoRedo(); scheduleAutoSave();
+  requestAnimationFrame(render); syncUndoRedo(); scheduleAutoSave();
 }
 
 function clearPage(){
   if(!strokes().length&&!images().length){showToast('Page already empty');return}
   pushAction({type: 'clear', strokes: [...strokes()], images: [...images()]});
   pageData[curPage]={strokes:[],images:[]};
-  render(); syncUndoRedo(); scheduleAutoSave();
+  requestAnimationFrame(render); syncUndoRedo(); scheduleAutoSave();
 }
 
 /* -- DATA SYSTEMS & EXPORT -- */
@@ -1650,24 +1659,6 @@ function makeShapeStroke(shape,orig){
   else if(shape.type==='triangle'){const tp=shape.pts;base.pts=[{x:tp[0].x,y:tp[0].y,p:.5},{x:tp[1].x,y:tp[1].y,p:.5},{x:tp[2].x,y:tp[2].y,p:.5},{x:tp[0].x,y:tp[0].y,p:.5}]}
   return base;
 }
-
-function addPage(){
-  pageData.push({strokes:[],images:[]});undoHistory.push([]);redoHistory.push([]);
-  curPage=pageData.length-1;buildPageStrip();resetView();showToast('Page '+(curPage+1)+' added');scheduleAutoSave();
-}
-function switchPage(i){if(i===curPage)return;curPage=i;buildPageStrip();resetView();updatePageCounter()}
-let pageDeleteTarget=null;
-function deletePage(i){pageDeleteTarget=i;document.getElementById('page-del-confirm').classList.add('active')}
-function confirmPageDelete(){
-  if(pageDeleteTarget===null)return;
-  if(pageData.length===1){showToast('Cannot delete the only page');document.getElementById('page-del-confirm').classList.remove('active');return}
-  pageData.splice(pageDeleteTarget,1);undoHistory.splice(pageDeleteTarget,1);redoHistory.splice(pageDeleteTarget,1);
-  if(curPage>=pageData.length)curPage=pageData.length-1;
-  document.getElementById('page-del-confirm').classList.remove('active');pageDeleteTarget=null;
-  buildPageStrip();render();showToast('Page deleted');scheduleAutoSave();
-}
-function buildPageStrip(){ /* page strip removed */ }
-function updatePageCounter(){ /* page counter removed */ }
 
 function activateSnip() {
     setTool('snip');
