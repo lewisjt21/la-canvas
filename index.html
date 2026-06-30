@@ -2640,6 +2640,24 @@ async function exportPDF(){
   if(!window.jspdf)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   const{jsPDF, GState}=window.jspdf;
 
+  // Build filename from folder hierarchy: Class_-_Topic_-_BoardName_annotated.pdf
+  // Falls back to board name only if not in a class→topic folder structure.
+  const boardTitle=document.getElementById('app-title').textContent||'canvas';
+  let filename;
+  try{
+    const board=currentBoardId ? await dbGet(BOARDS,currentBoardId) : null;
+    const topicFolder=board&&board.folderId ? await dbGet(FOLDERS,board.folderId) : null;
+    const classFolder=topicFolder&&topicFolder.parentId ? await dbGet(FOLDERS,topicFolder.parentId) : null;
+    if(classFolder&&topicFolder){
+      const safe=s=>s.replace(/\s+/g,'_').replace(/[^A-Za-z0-9_\-]/g,'');
+      filename=`${safe(classFolder.name)}_-_${safe(topicFolder.name)}_-_${safe(boardTitle)}_annotated.pdf`;
+    } else {
+      filename=boardTitle.replace(/\s+/g,'_')+'_annotated.pdf';
+    }
+  }catch(e){
+    filename=boardTitle.replace(/\s+/g,'_')+'_annotated.pdf';
+  }
+
   let pdf = null;
   const pad = 40; 
 
@@ -2760,8 +2778,6 @@ async function exportPDF(){
     }
   }
 
-  const title=document.getElementById('app-title').textContent.replace(/\s+/g,'_')||'canvas';
-  const filename=title+'_annotated.pdf';
   const pdfBlob=pdf.output('blob');
   overlay.classList.remove('active');
   await sharePdfBlob(pdfBlob, filename);
