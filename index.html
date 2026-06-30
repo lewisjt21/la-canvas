@@ -282,33 +282,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
 .fab.danger:hover{background:rgba(192,57,43,.35);color:white}
 .fab-divider{height:1px;background:rgba(255,255,255,.16);margin:1px 7px;flex-shrink:0}
 
-/* Page navigator */
-#page-nav{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:85;
-  display:flex;align-items:center;gap:2px;background:rgba(31,56,100,.92);
-  border:1px solid rgba(255,255,255,.18);border-top-color:rgba(255,255,255,.32);border-radius:16px;
-  padding:4px;box-shadow:0 6px 18px rgba(0,0,0,.28);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.page-nav-btn{width:30px;height:30px;border-radius:9px;background:transparent;border:none;color:white;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s}
-.page-nav-btn:hover{background:rgba(255,255,255,.14)}
-.page-nav-btn:disabled{opacity:.3;cursor:default}
-.page-nav-btn:disabled:hover{background:transparent}
-#page-nav-count{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
-.page-nav-btn.danger{color:#ff8f80}
-.page-nav-btn.danger:hover{background:rgba(192,57,43,.3);color:white}
-
-#page-menu{position:absolute;top:54px;left:50%;transform:translateX(-50%);z-index:86;
-  display:flex;flex-direction:column;gap:2px;min-width:168px;
-  background:rgba(31,56,100,.97);border:1px solid rgba(255,255,255,.18);border-top-color:rgba(255,255,255,.32);
-  border-radius:13px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.4);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.page-menu-item{display:flex;align-items:center;gap:10px;width:100%;
-  background:transparent;border:none;color:white;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;
-  text-align:left;padding:9px 11px;border-radius:9px;cursor:pointer;transition:background .12s}
-.page-menu-item:hover{background:rgba(255,255,255,.13)}
-.page-menu-item:disabled{opacity:.35;cursor:default}
-.page-menu-item:disabled:hover{background:transparent}
-.page-menu-item.danger{color:#ff8f80}
-.page-menu-item.danger:hover{background:rgba(192,57,43,.3);color:white}
 
 #zoom-pill{position:absolute;top:16px;right:16px;background:rgba(31,56,100,.8);
   border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 10px;
@@ -463,39 +436,6 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
     <canvas id="main-canvas"></canvas>
     <canvas id="active-canvas"></canvas>
     <video id="camera-overlay" autoplay playsinline style="display:none; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; z-index:1; background:#000; pointer-events:none;"></video>
-    <div id="page-nav" style="display:none">
-      <button class="page-nav-btn" id="page-prev" onclick="gotoPage(curPage-1)" title="Previous page">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <span id="page-nav-count">1 / 1</span>
-      <button class="page-nav-btn" id="page-next" onclick="gotoPage(curPage+1)" title="Next page">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-      <button class="page-nav-btn" id="page-add" onclick="addPage()" title="Add page">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <button class="page-nav-btn" id="page-menu-btn" onclick="togglePageMenu(event)" title="Page options">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-      </button>
-    </div>
-    <div id="page-menu" style="display:none">
-      <button class="page-menu-item" onclick="duplicatePage()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Duplicate page
-      </button>
-      <button class="page-menu-item" id="pm-left" onclick="movePage(-1)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        Move left
-      </button>
-      <button class="page-menu-item" id="pm-right" onclick="movePage(1)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        Move right
-      </button>
-      <button class="page-menu-item danger" onclick="deletePage()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        Delete page
-      </button>
-    </div>
     <div id="zoom-pill">100%</div>
   </div>
 </div>
@@ -1343,7 +1283,7 @@ function loadBoardIntoCanvas(board){
   document.getElementById('app').style.display='flex';
   document.getElementById('pen-ui-wrap').style.display='flex';
   document.getElementById('ur-wrap').style.display='flex';
-  resizeCanvas();updatePageNav();syncUndoRedo();render();renderActive();
+  resizeCanvas();syncUndoRedo();render();renderActive();
 }
 
 function goHome(){
@@ -1390,7 +1330,7 @@ function resizeCanvas(){
   canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
   canvas.style.width=w+'px';canvas.style.height=h+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  
+  sceneValid=false;
   if(activeCanvas&&activeCtx){
     activeCanvas.width=Math.round(w*dpr);activeCanvas.height=Math.round(h*dpr);
     activeCanvas.style.width=w+'px';activeCanvas.style.height=h+'px';
@@ -1406,16 +1346,20 @@ function toggleGrid() {
   scheduleAutoSave();
 }
 
+function renderTo(tctx, W, H, pr){
+  if(!tctx)return;
+  tctx.setTransform(pr,0,0,pr,0,0);tctx.clearRect(0,0,W,H);
+  if(!cameraStream){
+    tctx.fillStyle=bgColour;tctx.fillRect(0,0,W,H);
+    drawGridSystem(W,H,tctx);
+  }
+  for(const img of images()){if(!img._el||!img._el.complete)continue;const s=toScreen(img.x,img.y);tctx.drawImage(img._el,s.x,s.y,img.w*scale,img.h*scale)}
+  for(const s of strokes())drawStroke(s,tctx);
+}
 function render(){
   if(!ctx)return;
   const dpr=window.devicePixelRatio||1,W=canvas.parentElement.offsetWidth,H=canvas.parentElement.offsetHeight;
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
-  if(!cameraStream){
-    ctx.fillStyle=bgColour;ctx.fillRect(0,0,W,H);
-    drawGridSystem(W,H);
-  }
-  for(const img of images()){if(!img._el||!img._el.complete)continue;const s=toScreen(img.x,img.y);ctx.drawImage(img._el,s.x,s.y,img.w*scale,img.h*scale)}
-  for(const s of strokes())drawStroke(s);
+  renderTo(ctx,W,H,dpr);
 }
 
 let _renderQueued=false;
@@ -1425,38 +1369,45 @@ function scheduleRender(){
   requestAnimationFrame(()=>{ _renderQueued=false; render(); });
 }
 
-/* Pan/drift fast path: snapshot the committed canvas once, then just blit it shifted.
-   Avoids re-running grid + image + stroke-smoothing every frame while moving. */
-let panSnap=null, panSnapOff=null;
-function capturePanSnapshot(){
+/* Pan/drift fast path: render a buffer larger than the viewport once, then blit the
+   visible window from it each frame. Surrounding content stays visible while moving;
+   the buffer is only re-rendered when a pan nears its edge. */
+let sceneCanvas=null, sceneCtx2=null, sceneOff=null, sceneValid=false;
+const SCENE_MARGIN=340; // CSS px of off-screen content kept ready on every side
+function renderScene(){
   if(!ctx)return;
-  render(); // guarantee a sharp, complete frame before snapshotting
-  const c=document.createElement('canvas');
-  c.width=canvas.width; c.height=canvas.height;
-  c.getContext('2d').drawImage(canvas,0,0);
-  panSnap=c; panSnapOff={x:offsetX,y:offsetY};
+  const W=canvas.parentElement.offsetWidth, H=canvas.parentElement.offsetHeight, m=SCENE_MARGIN;
+  const sW=W+2*m, sH=H+2*m;
+  if(!sceneCanvas){ sceneCanvas=document.createElement('canvas'); sceneCtx2=sceneCanvas.getContext('2d'); }
+  if(sceneCanvas.width!==sW||sceneCanvas.height!==sH){ sceneCanvas.width=sW; sceneCanvas.height=sH; }
+  const ox=offsetX, oy=offsetY;
+  offsetX=ox+m; offsetY=oy+m;            // shift world into the margined buffer
+  renderTo(sceneCtx2, sW, sH, 1);
+  offsetX=ox; offsetY=oy;
+  sceneOff={x:ox,y:oy}; sceneValid=true;
 }
 function blitPan(){
-  if(!panSnap || panSnap.width!==canvas.width || panSnap.height!==canvas.height){ render(); return; }
-  const dpr=window.devicePixelRatio||1;
-  const W=canvas.parentElement.offsetWidth, H=canvas.parentElement.offsetHeight;
-  const dx=offsetX-panSnapOff.x, dy=offsetY-panSnapOff.y;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,W,H);
-  if(!cameraStream){ ctx.fillStyle=bgColour; ctx.fillRect(0,0,W,H); }
-  ctx.drawImage(panSnap, 0,0,panSnap.width,panSnap.height, dx,dy,W,H);
+  if(!sceneValid || !sceneCanvas){ render(); return; }
+  const W=canvas.parentElement.offsetWidth, H=canvas.parentElement.offsetHeight, m=SCENE_MARGIN;
+  const dx=offsetX-sceneOff.x, dy=offsetY-sceneOff.y;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!cameraStream){ ctx.fillStyle=bgColour; ctx.fillRect(0,0,canvas.width,canvas.height); }
+  ctx.drawImage(sceneCanvas, m-dx, m-dy, W, H, 0, 0, canvas.width, canvas.height);
+  if(Math.abs(dx)>m*0.8 || Math.abs(dy)>m*0.8) renderScene(); // refill before the edge shows
 }
-function endPanSnapshot(sharpen){ panSnap=null; panSnapOff=null; if(sharpen)render(); }
+function capturePanSnapshot(){ renderScene(); }
+function endPanSnapshot(sharpen){ sceneValid=false; if(sharpen)render(); }
 
-function drawGridSystem(W,H){
+function drawGridSystem(W,H,g=ctx){
   if(scale < 0.35 || gridMode === 2) return; 
-  ctx.save();
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
+  g.save();
+  g.translate(offsetX, offsetY);
+  g.scale(scale, scale);
   
   if (gridMode === 0) {
-      ctx.fillStyle = 'rgba(31,56,100,0.15)';
-      ctx.beginPath();
+      g.fillStyle = 'rgba(31,56,100,0.15)';
+      g.beginPath();
       const step = DOT_SPACING;
       const sx = Math.floor((-offsetX/scale)/step)*step;
       const sy = Math.floor((-offsetY/scale)/step)*step;
@@ -1464,25 +1415,25 @@ function drawGridSystem(W,H){
       const ey = sy + H/scale + step;
       for(let x=sx; x<ex; x+=step) {
           for(let y=sy; y<ey; y+=step) {
-              ctx.moveTo(x + DOT_RADIUS, y);
-              ctx.arc(x, y, DOT_RADIUS, 0, Math.PI*2);
+              g.moveTo(x + DOT_RADIUS, y);
+              g.arc(x, y, DOT_RADIUS, 0, Math.PI*2);
           }
       }
-      ctx.fill();
+      g.fill();
   } else if (gridMode === 1) {
-      ctx.strokeStyle = 'rgba(31,56,100,0.1)';
-      ctx.lineWidth = 1/scale;
-      ctx.beginPath();
+      g.strokeStyle = 'rgba(31,56,100,0.1)';
+      g.lineWidth = 1/scale;
+      g.beginPath();
       const step = DOT_SPACING;
       const sx = Math.floor((-offsetX/scale)/step)*step;
       const sy = Math.floor((-offsetY/scale)/step)*step;
       const ex = sx + W/scale + step;
       const ey = sy + H/scale + step;
-      for(let x=sx; x<ex; x+=step) { ctx.moveTo(x, sy); ctx.lineTo(x, ey); }
-      for(let y=sy; y<ey; y+=step) { ctx.moveTo(sx, y); ctx.lineTo(ex, y); }
-      ctx.stroke();
+      for(let x=sx; x<ex; x+=step) { g.moveTo(x, sy); g.lineTo(x, ey); }
+      for(let y=sy; y<ey; y+=step) { g.moveTo(sx, y); g.lineTo(ex, y); }
+      g.stroke();
   }
-  ctx.restore();
+  g.restore();
 }
 
 function drawStroke(s, targetCtx = ctx, overrideAlpha = null){
@@ -1899,12 +1850,12 @@ penPill.addEventListener('pointerup', e => {
 
 function onPointerDown(e){
   // Prevent canvas draw if interacting with UI
-  if(e.target.closest('#pen-ui-wrap') || e.target.closest('#ur-wrap') || e.target.closest('.tbtn') || e.target.closest('#page-nav')) return;
+  if(e.target.closest('#pen-ui-wrap') || e.target.closest('#ur-wrap') || e.target.closest('.tbtn')) return;
 
   // stop any momentum drift the moment a finger touches down
   if(driftRAF){ cancelAnimationFrame(driftRAF); driftRAF=null; }
   panVelX=0; panVelY=0; panLast=null;
-  if(panSnap) endPanSnapshot(true); // sharpen if a drift was mid-blit
+  if(sceneValid) endPanSnapshot(true); // sharpen if a drift was mid-blit
 
   // Palm rejection: while a stylus interaction is active, ignore extra touch pointers
   if(drawing && drawPointerId!==null && e.pointerId!==drawPointerId && !isPenOrMouse(e)){ e.preventDefault(); return; }
@@ -2370,94 +2321,6 @@ function clearPage(){
   render(); renderActive(); syncUndoRedo(); scheduleAutoSave();
 }
 
-/* -- PAGES -- */
-function updatePageNav(){
-  const nav=document.getElementById('page-nav');if(!nav)return;
-  const n=pageData.length;
-  nav.style.display=n>1?'flex':'none';
-  if(n<=1) closePageMenu();
-  document.getElementById('page-nav-count').textContent=(curPage+1)+' / '+n;
-  document.getElementById('page-prev').disabled=curPage<=0;
-  document.getElementById('page-next').disabled=curPage>=n-1;
-  const l=document.getElementById('pm-left'), r=document.getElementById('pm-right');
-  if(l)l.disabled=curPage<=0;
-  if(r)r.disabled=curPage>=n-1;
-}
-
-function togglePageMenu(ev){
-  if(ev) ev.stopPropagation();
-  const m=document.getElementById('page-menu');
-  if(m.style.display==='flex'){ closePageMenu(); return; }
-  const l=document.getElementById('pm-left'), r=document.getElementById('pm-right');
-  if(l)l.disabled=curPage<=0;
-  if(r)r.disabled=curPage>=pageData.length-1;
-  m.style.display='flex';
-  if(!togglePageMenu._bound){
-    document.addEventListener('pointerdown',e=>{
-      if(document.getElementById('page-menu').style.display==='flex' &&
-         !e.target.closest('#page-menu') && !e.target.closest('#page-menu-btn')) closePageMenu();
-    },{passive:true});
-    togglePageMenu._bound=true;
-  }
-}
-function closePageMenu(){ const m=document.getElementById('page-menu'); if(m)m.style.display='none'; }
-
-function gotoPage(i){
-  if(i<0||i>=pageData.length||i===curPage)return;
-  curPage=i;
-  clearSelection();
-  syncUndoRedo();updatePageNav();render();renderActive();scheduleAutoSave();
-}
-
-function addPage(){
-  pageData.push({strokes:[],images:[]});
-  undoHistory.push([]);redoHistory.push([]);
-  curPage=pageData.length-1;
-  clearSelection();
-  syncUndoRedo();updatePageNav();render();renderActive();scheduleAutoSave();
-  showToast('Page '+pageData.length+' added');
-}
-
-function duplicatePage(){
-  closePageMenu();
-  const src=pageData[curPage];
-  const copy={
-    strokes:src.strokes.map(s=>({col:s.col,size:s.size,tool:s.tool,straight:!!s.straight,pts:s.pts.map(p=>({x:p.x,y:p.y,p:p.p}))})),
-    images:src.images.map(im=>{ const c={x:im.x,y:im.y,w:im.w,h:im.h,src:im.src,hash:im.hash,_el:im._el}; if(!c._el&&(c.src||c.hash))loadImgEl(c); return c; })
-  };
-  pageData.splice(curPage+1,0,copy);
-  undoHistory.splice(curPage+1,0,[]);redoHistory.splice(curPage+1,0,[]);
-  curPage=curPage+1;
-  clearSelection();
-  syncUndoRedo();updatePageNav();render();renderActive();scheduleAutoSave();
-  showToast('Page duplicated');
-}
-
-function movePage(dir){
-  const j=curPage+dir;
-  if(j<0||j>=pageData.length)return;
-  [pageData[curPage],pageData[j]]=[pageData[j],pageData[curPage]];
-  [undoHistory[curPage],undoHistory[j]]=[undoHistory[j],undoHistory[curPage]];
-  [redoHistory[curPage],redoHistory[j]]=[redoHistory[j],redoHistory[curPage]];
-  curPage=j;
-  clearSelection();
-  syncUndoRedo();updatePageNav();render();renderActive();scheduleAutoSave();
-  showToast('Page moved');
-}
-
-function deletePage(){
-  if(pageData.length<=1){showToast('Cannot delete the only page');return}
-  closePageMenu();
-  showWarn('Delete page '+(curPage+1)+'?','This page and everything on it will be permanently removed.',()=>{
-    pageData.splice(curPage,1);
-    undoHistory.splice(curPage,1);
-    redoHistory.splice(curPage,1);
-    if(curPage>=pageData.length)curPage=pageData.length-1;
-    clearSelection();
-    syncUndoRedo();updatePageNav();render();renderActive();scheduleAutoSave();
-    showToast('Page deleted');
-  });
-}
 
 /* -- DATA SYSTEMS & EXPORT -- */
 const imgInput=document.getElementById('img-input');
@@ -2995,6 +2858,7 @@ function toggleCamera() {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;
     document.getElementById('camera-overlay').style.display = 'none';
+    render();
     showToast('Document camera off');
   } else {
     showToast('Scanning USB/video hardware interfaces...');
@@ -3058,6 +2922,8 @@ async function connectCameraDevice(deviceId) {
     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = cameraStream;
     video.style.display = 'block';
+    render();
+    video.addEventListener('loadeddata', render, { once: true });
     showToast('4K camera feed active');
   } catch(e) {
     console.error('Direct camera execution fault:', e);
@@ -3066,6 +2932,8 @@ async function connectCameraDevice(deviceId) {
         cameraStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
         video.srcObject = cameraStream;
         video.style.display = 'block';
+        render();
+        video.addEventListener('loadeddata', render, { once: true });
         showToast('Camera feed active (Adaptive Res)');
     } catch(fallbackErr) {
         console.error('Critical camera fallback error:', fallbackErr);
