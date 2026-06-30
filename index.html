@@ -2978,9 +2978,28 @@ function toggleCamera() {
 
 async function enumerateAndShowCameras() {
   try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    let videoDevices = devices.filter(d => d.kind === 'videoinput');
+
+    // Browsers hide camera labels (and on some mobile browsers, hide the
+    // device list entirely) until a getUserMedia permission has been granted
+    // at least once. If we don't have labels yet, prompt for a throwaway
+    // stream just to unlock the real device list, then stop it immediately.
+    const needsPermission = videoDevices.length === 0 || videoDevices.every(d => !d.label);
+    if (needsPermission) {
+      showToast('Requesting camera access...');
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ video: true });
+        probe.getTracks().forEach(t => t.stop());
+        devices = await navigator.mediaDevices.enumerateDevices();
+        videoDevices = devices.filter(d => d.kind === 'videoinput');
+      } catch (permErr) {
+        console.error('Camera permission denied/unavailable:', permErr);
+        showToast('Camera access was blocked - check your browser\u2019s site permissions');
+        return;
+      }
+    }
+
     if (videoDevices.length === 0) {
       showToast('No video input peripherals detected');
       return;
