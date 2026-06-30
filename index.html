@@ -431,6 +431,7 @@ html,body{height:100%;width:100%;overflow:hidden;font-family:'Inter',sans-serif;
       <button class="tbtn" id="lesson-import-trigger" onclick="openLessonModal()" title="Add lesson content"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>Lesson</button>
     </div>
     <button class="tbtn" onclick="exportPDF()" title="Export PDF"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>PDF</button>
+    <button class="tbtn" onclick="exportAndShare()" title="Share PDF to Teams / OneDrive" id="share-btn" style="display:none"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share</button>
   </div>
   <div id="canvas-wrap">
     <canvas id="main-canvas"></canvas>
@@ -2760,10 +2761,39 @@ async function exportPDF(){
   }
 
   const title=document.getElementById('app-title').textContent.replace(/\s+/g,'_')||'canvas';
-  pdf.save(title+'_annotated.pdf');
+  const filename=title+'_annotated.pdf';
+  const pdfBlob=pdf.output('blob');
   overlay.classList.remove('active');
+  await sharePdfBlob(pdfBlob, filename);
+}
+
+/* Share via Web Share API (Android share sheet) if available, else download. */
+async function sharePdfBlob(blob, filename, forceDownload=false){
+  if(!forceDownload && navigator.canShare && navigator.canShare({files:[new File([blob],filename,{type:'application/pdf'})]})){
+    try{
+      await navigator.share({
+        files:[new File([blob],filename,{type:'application/pdf'})],
+        title:'Lesson notes',
+        text:filename.replace(/_annotated\.pdf$/,'').replace(/_/g,' ')
+      });
+      showToast('Shared!');
+      return;
+    }catch(e){
+      if(e.name==='AbortError'){ showToast('Share cancelled'); return; }
+      // Any other error: fall through to download
+    }
+  }
+  // Fallback: normal file download
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
   showToast('PDF exported');
 }
+
+/* Share button: same as PDF export - share sheet fires automatically if supported. */
+async function exportAndShare(){ await exportPDF(); }
 
 function loadScript(src){return new Promise((r,j)=>{if(document.querySelector(`script[src="${src}"]`)){r();return}const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=j;document.head.appendChild(s)})}
 
@@ -3478,6 +3508,17 @@ async function restoreFromDrive() {
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persisted().then(p=>{ if(!p) navigator.storage.persist().catch(()=>{}); }).catch(()=>{});
 }
+
+// Show the Share button only on devices that support Web Share with files (Android, etc.)
+(async()=>{
+  try{
+    const probe=new File([new Blob(['test'])], 'test.pdf', {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[probe]})){
+      const btn=document.getElementById('share-btn');
+      if(btn) btn.style.display='';
+    }
+  }catch(e){}
+})();
 
 // Flush the current board immediately when the app is backgrounded or closing,
 // so the debounced autosave can't lose the last edit if the OS kills the tab.
