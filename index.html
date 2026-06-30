@@ -2650,7 +2650,11 @@ async function exportPDF(){
     const classFolder=topicFolder&&topicFolder.parentId ? await dbGet(FOLDERS,topicFolder.parentId) : null;
     if(classFolder&&topicFolder){
       const safe=s=>s.replace(/\s+/g,'_').replace(/[^A-Za-z0-9_\-]/g,'');
-      filename=`${safe(classFolder.name)}_-_${safe(topicFolder.name)}_-_${safe(boardTitle)}_annotated.pdf`;
+      // Board names are auto-prefixed as "ClassName TopicName Lesson N" —
+      // strip that prefix so the lesson part is just "Lesson N" (or the custom name if renamed).
+      const prefix=`${classFolder.name} ${topicFolder.name} `;
+      const lessonPart=boardTitle.startsWith(prefix) ? boardTitle.slice(prefix.length) : boardTitle;
+      filename=`${safe(classFolder.name)}_-_${safe(topicFolder.name)}_-_${safe(lessonPart)}_annotated.pdf`;
     } else {
       filename=boardTitle.replace(/\s+/g,'_')+'_annotated.pdf';
     }
